@@ -100,7 +100,10 @@ func main() {
 				}
 
 				fmt.Fprintf(table, "\n")
-				table.Flush()
+
+				if !c.Bool(`yes`) {
+					table.Flush()
+				}
 
 				if c.Bool(`dry-run`) {
 					log.Noticef("Not doing anything.")
