@@ -20,3 +20,4 @@ $(TOOLS):
 	go build -o $(subst cmd,bin,$(@)) $(@)/*.go
 
 build: $(TOOLS)
+	cp bin/* ~/lib/apps/clitools/linux/amd64/
