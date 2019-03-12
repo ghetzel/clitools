@@ -1,6 +1,7 @@
-.PHONY: cmd build
+.PHONY: all cmd build
 .EXPORT_ALL_VARIABLES:
 
+TOOLS           := $(wildcard cmd/*)
 GO111MODULE     ?= on
 LOCALS          := $(shell find . -type f -name '*.go' 2> /dev/null)
 
@@ -14,5 +15,8 @@ fmt:
 	gofmt -w $(LOCALS)
 	go vet ./...
 
-build:
-	$(foreach tool,$(wildcard cmd/*),go build -o bin/$(shell basename $(tool)) cmd/$(shell basename $(tool))/*.go)
+.PHONY: $(TOOLS)
+$(TOOLS):
+	go build -o $(subst cmd,bin,$(@)) $(@)/*.go
+
+build: $(TOOLS)
