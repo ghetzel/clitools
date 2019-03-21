@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 
@@ -106,7 +107,10 @@ func main() {
 					headers[`Content-Type`] = ct
 				}
 
-				log.Infof("> HTTP %v %v", method, url)
+				client.SetPreRequestHook(func(req *http.Request) (interface{}, error) {
+					log.Infof("> HTTP %v %v", req.Method, req.URL)
+					return req, nil
+				})
 
 				res, err := client.Request(httputil.Method(method), ``, data, params, headers)
 
