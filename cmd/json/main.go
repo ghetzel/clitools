@@ -63,7 +63,7 @@ func main() {
 			Usage: `The number of spaces to indent each successive level of the output object.`,
 			Value: 4,
 		},
-		cli.StringFlag{
+		cli.BoolFlag{
 			Name:  `insecure, k`,
 			Usage: `Whether to ignore SSL server certificates that do not validate against the set of local trusted certificates.`,
 		},
@@ -92,9 +92,15 @@ func main() {
 			if url == `` {
 				fmt.Println(string(out))
 			} else if client, err := httputil.NewClient(url); err == nil {
+				client.SetInsecureTLS(c.Bool(`insecure`))
+
 				method := strings.ToUpper(c.String(`method`))
 				params := sliceOfPairsToMap(c.StringSlice(`params`))
 				headers := sliceOfPairsToMap(c.StringSlice(`headers`))
+
+				if c.IsSet(`username`) || c.IsSet(`password`) {
+					client.SetBasicAuth(c.String(`username`), c.String(`password`))
+				}
 
 				if ct := c.String(`content-type`); ct != `` {
 					headers[`Content-Type`] = ct
