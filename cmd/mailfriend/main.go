@@ -75,6 +75,39 @@ func main() {
 					}
 				}
 			},
+		}, {
+			Name:      `stat`,
+			ArgsUsage: `[FOLDER]`,
+			Flags:     []cli.Flag{},
+			Action: func(c *cli.Context) {
+				if c.NArg() > 0 {
+					if folder, err := profile.GetFolder(c.Args().First()); err == nil {
+						if stat, err := folder.Statistics(); err == nil {
+							print(c, stat, nil)
+						} else {
+							log.Fatalf("Cannot stat folder: %v", err)
+						}
+					} else {
+						log.Fatalf("Cannot get folder: %v", err)
+					}
+				} else {
+					if folders, err := profile.ListFolders(); err == nil {
+						metastat := new(FolderStats)
+
+						for _, folder := range folders {
+							if stat, err := folder.Statistics(); err == nil {
+								metastat.Add(stat)
+							} else {
+								log.Warningf("Cannot stat folder %q: %v", folder.Name, err)
+							}
+						}
+
+						print(c, metastat, nil)
+					} else {
+						log.Fatalf("Cannot get folders: %v", err)
+					}
+				}
+			},
 		},
 	}
 
@@ -92,9 +125,9 @@ func print(c *cli.Context, data interface{}, txtfn func()) {
 			if txtfn != nil {
 				txtfn()
 			} else {
-				tw := tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
+				tw := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', 0)
 
-				for _, line := range sliceutil.Sliceify(data) {
+				for _, line := range sliceutil.Compact([]interface{}{data}) {
 					fmt.Fprintf(tw, "%v\n", line)
 				}
 
