@@ -2,11 +2,15 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
 	"text/tabwriter"
+
+	"github.com/ghetzel/go-stockutil/fileutil"
 
 	"github.com/ghetzel/cli"
 	"github.com/ghetzel/clitools"
@@ -51,6 +55,31 @@ func main() {
 
 		spattern := strings.TrimPrefix(c.Args().First(), `s`)
 		filenames := c.Args()[1:]
+
+		for i, filename := range filenames {
+			if fileutil.DirExists(filename) {
+				if entries, err := ioutil.ReadDir(filename); err == nil {
+					var pre []string
+					var post []string
+					var expanded []string
+
+					pre = filenames[:i]
+
+					if i+1 < len(filenames) {
+						post = filenames[i+1:]
+					}
+
+					for _, entry := range entries {
+						expanded = append(expanded, filepath.Join(filename, entry.Name()))
+					}
+
+					filenames = append(pre, expanded...)
+					filenames = append(filenames, post...)
+				} else {
+					log.Fatalf("Cannot read directory %q: %v", filename, err)
+				}
+			}
+		}
 
 		if len(spattern) == 0 {
 			log.Fatalf("malformed s/// pattern")
