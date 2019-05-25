@@ -11,7 +11,6 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/ghetzel/cli"
 	"github.com/ghetzel/clitools"
-	"github.com/ghetzel/go-stockutil/fileutil"
 	"github.com/ghetzel/go-stockutil/log"
 	"github.com/ghetzel/go-stockutil/stringutil"
 	"golang.org/x/net/html"
@@ -44,10 +43,7 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) {
-		var input io.Reader
-		if !fileutil.IsTerminal() {
-			input = os.Stdin
-		}
+		var input io.Reader = os.Stdin
 
 		if input != nil {
 			if doc, err := htmldoc(os.Stdin); err == nil {
