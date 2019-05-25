@@ -10,10 +10,9 @@ import (
 	"sync"
 	"text/tabwriter"
 
-	"github.com/ghetzel/go-stockutil/fileutil"
-
 	"github.com/ghetzel/cli"
 	"github.com/ghetzel/clitools"
+	"github.com/ghetzel/go-stockutil/fileutil"
 	"github.com/ghetzel/go-stockutil/log"
 	"github.com/ghetzel/go-stockutil/stringutil"
 )

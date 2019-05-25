@@ -1,15 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
-	"github.com/NonerKao/color-aware-tabwriter"
 	"github.com/ghetzel/cli"
 	"github.com/ghetzel/clitools"
 	"github.com/ghetzel/go-stockutil/log"
-	"github.com/ghetzel/go-stockutil/sliceutil"
 )
 
 func main() {
@@ -60,7 +57,7 @@ func main() {
 				if c.NArg() > 0 {
 					if folder, err := profile.GetFolder(c.Args().First()); err == nil {
 						for message := range folder.Messages() {
-							print(c, message, func() {
+							clitools.Print(c, message, func() {
 								fmt.Println(message.String())
 							})
 						}
@@ -69,7 +66,7 @@ func main() {
 					}
 				} else {
 					if folders, err := profile.ListFolders(); err == nil {
-						print(c, folders, nil)
+						clitools.Print(c, folders, nil)
 					} else {
 						log.Fatalf("Cannot list folders: %v", err)
 					}
@@ -83,7 +80,7 @@ func main() {
 				if c.NArg() > 0 {
 					if folder, err := profile.GetFolder(c.Args().First()); err == nil {
 						if stat, err := folder.Statistics(); err == nil {
-							print(c, stat, nil)
+							clitools.Print(c, stat, nil)
 						} else {
 							log.Fatalf("Cannot stat folder: %v", err)
 						}
@@ -102,7 +99,7 @@ func main() {
 							}
 						}
 
-						print(c, metastat, nil)
+						clitools.Print(c, metastat, nil)
 					} else {
 						log.Fatalf("Cannot get folders: %v", err)
 					}
@@ -112,27 +109,4 @@ func main() {
 	}
 
 	app.Run(os.Args)
-}
-
-func print(c *cli.Context, data interface{}, txtfn func()) {
-	if data != nil {
-		switch c.GlobalString(`format`) {
-		case `json`:
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent(``, `  `)
-			enc.Encode(data)
-		default:
-			if txtfn != nil {
-				txtfn()
-			} else {
-				tw := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', 0)
-
-				for _, line := range sliceutil.Compact([]interface{}{data}) {
-					fmt.Fprintf(tw, "%v\n", line)
-				}
-
-				tw.Flush()
-			}
-		}
-	}
 }
