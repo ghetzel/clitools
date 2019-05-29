@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"time"
 
 	imap "github.com/emersion/go-imap"
 	"github.com/ghetzel/go-stockutil/log"
+	"github.com/ghetzel/go-stockutil/sliceutil"
 )
 
 type Message struct {
@@ -42,14 +44,16 @@ func (self *Message) From() *Contact {
 	}
 }
 
-func (self *Message) to(header string) (contacts []*Contact) {
+func (self *Message) addrs(header ContactSource) (contacts []*Contact) {
 	var addrs []*imap.Address
 
 	switch header {
-	case `cc`:
+	case Cc:
 		addrs = self.hdr().Cc
-	case `bcc`:
+	case Bcc:
 		addrs = self.hdr().Bcc
+	case ReplyTo:
+		addrs = self.hdr().ReplyTo
 	default:
 		addrs = self.hdr().To
 	}
@@ -66,15 +70,19 @@ func (self *Message) to(header string) (contacts []*Contact) {
 }
 
 func (self *Message) To() []*Contact {
-	return self.to(`to`)
+	return self.addrs(To)
 }
 
 func (self *Message) Cc() []*Contact {
-	return self.to(`cc`)
+	return self.addrs(Cc)
 }
 
 func (self *Message) Bcc() []*Contact {
-	return self.to(`bcc`)
+	return self.addrs(Bcc)
+}
+
+func (self *Message) ReplyTo() []*Contact {
+	return self.addrs(ReplyTo)
 }
 
 func (self *Message) Recipients() (contacts []*Contact) {
@@ -84,6 +92,84 @@ func (self *Message) Recipients() (contacts []*Contact) {
 	return
 }
 
+func (self *Message) ID() string {
+	return self.hdr().MessageId
+}
+
+func (self *Message) ParentID() string {
+	return self.hdr().InReplyTo
+}
+
+func (self *Message) Flags() []Flag {
+	return ParseFlags(self.message.Flags)
+}
+
+func (self *Message) IsRead() bool {
+	return sliceutil.Contains(self.Flags(), FlagRead)
+}
+
+func (self *Message) IsStarred() bool {
+	return sliceutil.Contains(self.Flags(), FlagStarred)
+}
+
 func (self *Message) String() string {
-	return log.CSprintf("${green}[%v]${reset}\t%v\t${blue}%v${reset}", self.Timestamp().Format(`2006-01-02 15:04:05`), self.Subject(), self.From())
+	var line string
+	var tokens string
+
+	if self.IsStarred() {
+		tokens += "*"
+	} else {
+		tokens += " "
+	}
+
+	if !self.IsRead() {
+		tokens += "!"
+	} else {
+		tokens += " "
+	}
+
+	line += log.CSprintf(
+		"${yellow}[%s]${reset}${green}[%v]${reset}\t%v\t${blue}%v${reset}",
+		tokens,
+		self.Timestamp().Format(`2006-01-02 15:04:05`),
+		self.Subject(),
+		self.From(),
+	)
+
+	return line
+}
+
+func (self *Message) MarshalJSON() ([]byte, error) {
+	out := map[string]interface{}{
+		`ID`:        self.ID(),
+		`Subject`:   self.Subject(),
+		`Timestamp`: self.Timestamp(),
+		`From`:      self.From().String(),
+	}
+
+	if flags := ParseFlags(self.message.Flags); len(flags) > 0 {
+		out[`Flags`] = sliceutil.Stringify(flags)
+	}
+
+	if v := self.ParentID(); v != `` {
+		out[`ParentID`] = v
+	}
+
+	if v := self.To(); len(v) > 0 {
+		out[`To`] = sliceutil.Stringify(v)
+	}
+
+	if v := self.Cc(); len(v) > 0 {
+		out[`Cc`] = sliceutil.Stringify(v)
+	}
+
+	if v := self.Bcc(); len(v) > 0 {
+		out[`Bcc`] = sliceutil.Stringify(v)
+	}
+
+	if v := self.ReplyTo(); len(v) > 0 {
+		out[`ReplyTo`] = sliceutil.Stringify(v)
+	}
+
+	return json.Marshal(out)
 }

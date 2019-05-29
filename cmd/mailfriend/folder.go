@@ -58,7 +58,10 @@ func (self *Folder) Messages() <-chan *Message {
 			if mbox.Messages > 0 {
 				seqset := new(imap.SeqSet)
 				seqset.AddRange(1, mbox.Messages)
-				items := []imap.FetchItem{imap.FetchEnvelope}
+				items := []imap.FetchItem{
+					imap.FetchEnvelope,
+					imap.FetchFlags,
+				}
 
 				messages := make(chan *imap.Message)
 
