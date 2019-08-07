@@ -43,6 +43,10 @@ func NewProfile(profile string) (*Profile, error) {
 	}
 }
 
+func (self *Profile) c() *client.Client {
+	return self.client
+}
+
 func (self *Profile) config() string {
 	return fileutil.MustExpandUser(filepath.Join(ProfileDir, fmt.Sprintf("%s.yml", self.profile)))
 }

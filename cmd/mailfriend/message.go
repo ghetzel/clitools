@@ -5,6 +5,7 @@ import (
 	"time"
 
 	imap "github.com/emersion/go-imap"
+	"github.com/emersion/go-imap/client"
 	"github.com/ghetzel/go-stockutil/log"
 	"github.com/ghetzel/go-stockutil/sliceutil"
 )
@@ -42,6 +43,10 @@ func (self *Message) From() *Contact {
 			Address: `unknown`,
 		}
 	}
+}
+
+func (self *Message) c() *client.Client {
+	return self.folder.c()
 }
 
 func (self *Message) addrs(header ContactSource) (contacts []*Contact) {
@@ -96,6 +101,10 @@ func (self *Message) ID() string {
 	return self.hdr().MessageId
 }
 
+func (self *Message) Seq() uint32 {
+	return self.message.SeqNum
+}
+
 func (self *Message) ParentID() string {
 	return self.hdr().InReplyTo
 }
@@ -110,6 +119,37 @@ func (self *Message) IsRead() bool {
 
 func (self *Message) IsStarred() bool {
 	return sliceutil.Contains(self.Flags(), FlagStarred)
+}
+
+// Marks the message for deletion.
+func (self *Message) Delete() error {
+	return self.Mark(FlagDeleted)
+}
+
+// Adds one or more flags to this message.
+func (self *Message) Mark(flag Flag, flags ...Flag) error {
+	return self.doFlags(imap.AddFlags, flag, flags...)
+}
+
+// Removes one or more flags to this message.
+func (self *Message) Unmark(flag Flag, flags ...Flag) error {
+	return self.doFlags(imap.RemoveFlags, flag, flags...)
+}
+
+func (self *Message) doFlags(op imap.FlagsOp, flag Flag, flags ...Flag) error {
+	nativeFlags := []interface{}{
+		flag.native(),
+	}
+
+	for _, f := range flags {
+		nativeFlags = append(nativeFlags, f.native())
+	}
+
+	seq := new(imap.SeqSet)
+	seq.AddNum(self.message.SeqNum)
+	item := imap.FormatFlagsOp(op, true)
+
+	return self.c().Store(seq, item, nativeFlags, nil)
 }
 
 func (self *Message) String() string {

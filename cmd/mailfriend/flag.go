@@ -34,6 +34,25 @@ func (self Flag) String() string {
 	}
 }
 
+func (self Flag) native() string {
+	switch self {
+	case FlagRead:
+		return imap.SeenFlag
+	case FlagAnswered:
+		return imap.AnsweredFlag
+	case FlagStarred:
+		return imap.FlaggedFlag
+	case FlagDeleted:
+		return imap.DeletedFlag
+	case FlagDraft:
+		return imap.DraftFlag
+	case FlagRecent:
+		return imap.RecentFlag
+	default:
+		return ``
+	}
+}
+
 func ParseFlag(flag interface{}) Flag {
 	if v, ok := flag.(Flag); ok {
 		return v

@@ -105,6 +105,62 @@ func main() {
 					}
 				}
 			},
+		}, {
+			Name:      `rm`,
+			ArgsUsage: `FOLDER [FILTER ..]`,
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:  `expunge-every, n`,
+					Usage: `Perform an expunge every N messages`,
+					Value: 100,
+				},
+			},
+			Action: func(c *cli.Context) {
+				if c.NArg() > 0 {
+					if folder, err := profile.GetFolder(c.Args().First()); err == nil {
+						msgchan := make(chan *Message)
+						running := true
+
+						go func() {
+							for running {
+								var bulk []*Message
+
+								for msg := range msgchan {
+									bulk = append(bulk, msg)
+
+									if n := c.Int(`expunge-every`); len(bulk) >= n {
+										log.Infof("[%v] Deleting %d messages", folder.Name, n)
+
+										if err := folder.Delete(bulk...); err != nil {
+											log.Warningf("Deletes failed: %v", err)
+										}
+
+										if err := folder.Expunge(); err != nil {
+											log.Warningf("Expunge failed: %v", err)
+										}
+
+										bulk = nil
+									}
+								}
+							}
+						}()
+
+						for message := range folder.Messages() {
+							msgchan <- message
+							log.Debugf("Dispatched message %v", message.Seq())
+						}
+
+						close(msgchan)
+
+						log.Infof("Expunging folder %q", folder.Name)
+						running = false
+					} else {
+						log.Fatalf("Cannot list folder: %v", err)
+					}
+				} else {
+					log.Fatalf("Must specify a folder")
+				}
+			},
 		},
 	}
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	imap "github.com/emersion/go-imap"
+	"github.com/emersion/go-imap/client"
 	"github.com/ghetzel/go-stockutil/log"
 )
 
@@ -48,13 +49,45 @@ func (self *Folder) Statistics() (*FolderStats, error) {
 	}
 }
 
+func (self *Folder) Expunge() error {
+	return self.c().Expunge(nil)
+}
+
+func (self *Folder) Mark(flags []Flag, messages ...*Message) error {
+	var nativeFlags []interface{}
+
+	for _, f := range flags {
+		nativeFlags = append(nativeFlags, f.native())
+	}
+
+	seq := new(imap.SeqSet)
+
+	for _, m := range messages {
+		log.Debugf("adding %+v", m.Seq())
+		seq.AddNum(m.Seq())
+	}
+
+	return self.c().Store(
+		seq,
+		imap.FormatFlagsOp(imap.AddFlags, false),
+		nativeFlags,
+		nil,
+	)
+}
+
+func (self *Folder) Delete(messages ...*Message) error {
+	return self.Mark([]Flag{
+		FlagDeleted,
+	}, messages...)
+}
+
 func (self *Folder) Messages() <-chan *Message {
 	msgchan := make(chan *Message)
 
 	go func() {
 		defer close(msgchan)
 
-		if mbox, err := self.profile.client.Select(self.Name, true); err == nil {
+		if mbox, err := self.c().Select(self.Name, true); err == nil {
 			if mbox.Messages > 0 {
 				seqset := new(imap.SeqSet)
 				seqset.AddRange(1, mbox.Messages)
@@ -84,4 +117,8 @@ func (self *Folder) Messages() <-chan *Message {
 	}()
 
 	return msgchan
+}
+
+func (self *Folder) c() *client.Client {
+	return self.profile.c()
 }
