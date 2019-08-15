@@ -52,13 +52,22 @@ func main() {
 		{
 			Name:      `ls`,
 			ArgsUsage: `[FOLDER]`,
-			Flags:     []cli.Flag{},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  `uid, u`,
+					Usage: `Only list UIDs of messages.`,
+				},
+			},
 			Action: func(c *cli.Context) {
 				if c.NArg() > 0 {
 					if folder, err := profile.GetFolder(c.Args().First()); err == nil {
 						for message := range folder.Messages() {
 							clitools.Print(c, message, func() {
-								fmt.Println(message.String())
+								if c.Bool(`uid`) {
+									fmt.Println(message.ID())
+								} else {
+									fmt.Println(message.String())
+								}
 							})
 						}
 					} else {
@@ -107,14 +116,8 @@ func main() {
 			},
 		}, {
 			Name:      `rm`,
-			ArgsUsage: `FOLDER [FILTER ..]`,
-			Flags: []cli.Flag{
-				cli.IntFlag{
-					Name:  `expunge-every, n`,
-					Usage: `Perform an expunge every N messages`,
-					Value: 100,
-				},
-			},
+			ArgsUsage: `FOLDER`,
+			Flags:     []cli.Flag{},
 			Action: func(c *cli.Context) {
 				if c.NArg() > 0 {
 					if folder, err := profile.GetFolder(c.Args().First()); err == nil {

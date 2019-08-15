@@ -23,7 +23,10 @@ func Print(c *cli.Context, data interface{}, txtfn func()) {
 			} else {
 				tw := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', 0)
 
-				for _, line := range sliceutil.Compact([]interface{}{data}) {
+				lines := sliceutil.Sliceify(data)
+				lines = sliceutil.Compact(lines)
+
+				for _, line := range lines {
 					fmt.Fprintf(tw, "%v\n", line)
 				}
 
