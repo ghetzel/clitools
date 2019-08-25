@@ -9,6 +9,7 @@ import (
 	"github.com/ghetzel/cli"
 	"github.com/ghetzel/clitools"
 	"github.com/ghetzel/go-stockutil/log"
+	"github.com/ghetzel/go-stockutil/sliceutil"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -50,6 +51,24 @@ func main() {
 			Action: func(c *cli.Context) {
 				if institutions, err := client.Institutions(); err == nil {
 					clitools.Print(c, institutions, nil)
+				} else {
+					log.Fatal(err)
+				}
+			},
+		}, {
+			Name:  `accounts`,
+			Usage: `List all accounts for the given institution(s)`,
+			Action: func(c *cli.Context) {
+				if institutions, err := client.Institutions(); err == nil {
+					for _, institution := range institutions {
+						if c.NArg() == 0 || sliceutil.ContainsString(c.Args(), institution.ID) {
+							if accounts, err := institution.Accounts(); err == nil {
+								log.Dump(accounts)
+							} else {
+								log.Errorf("institution %v: %v", institution, err)
+							}
+						}
+					}
 				} else {
 					log.Fatal(err)
 				}

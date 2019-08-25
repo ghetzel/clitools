@@ -37,7 +37,6 @@ var TransactionsSchema = &dal.Collection{
 			Validator: dal.ValidateIsOneOf(
 				`debit`,
 				`credit`,
-				`note`,
 			),
 		}, {
 			Name:         `Amount`,

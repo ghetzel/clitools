@@ -35,21 +35,23 @@ func (self *Institution) String() string {
 }
 
 func (self *Institution) Ping() error {
-	if req, err := self.ofxreq(&ofxgo.ProfileRequest{
-		TrnUID: self.txnID(),
-		DtProfUp: ofxgo.Date{
-			Time: time.Unix(0, 0),
-		},
-	}); err == nil {
-		if res, err := self.ofxdo(req); err == nil {
-			log.Dump(res)
-			return nil
-		} else {
-			return err
-		}
-	} else {
-		return err
-	}
+	// if req, err := self.ofxreq(&ofxgo.ProfileRequest{
+	// 	TrnUID: self.txnID(),
+	// 	DtProfUp: ofxgo.Date{
+	// 		Time: time.Unix(0, 0),
+	// 	},
+	// }); err == nil {
+	// 	if res, err := self.ofxdo(req); err == nil {
+	// 		log.Dump(res)
+	// 		return nil
+	// 	} else {
+	// 		return err
+	// 	}
+	// } else {
+	// 	return err
+	// }
+
+	return nil
 }
 
 func (self *Institution) ofxdo(req *ofxgo.Request) (*ofxgo.Response, error) {
@@ -138,6 +140,10 @@ func (self *Institution) Password() (string, error) {
 func (self *Institution) Resync() error {
 	var merr error
 
+	if err := self.resyncAccounts(); err != nil {
+		return err
+	}
+
 	if accounts, err := self.Accounts(); err == nil {
 		for _, account := range accounts {
 			merr = log.AppendError(merr, account.Resync())
@@ -172,6 +178,21 @@ func (self *Institution) Account(id string) (*Account, error) {
 		return &account, nil
 	} else {
 		return nil, err
+	}
+}
+
+func (self *Institution) resyncAccounts() error {
+	if req, err := self.ofxreq(&ofxgo.AcctInfoRequest{
+		TrnUID: self.txnID(),
+	}); err == nil {
+		if res, err := self.ofxdo(req); err == nil {
+			log.Dump(res)
+			return nil
+		} else {
+			return err
+		}
+	} else {
+		return err
 	}
 }
 

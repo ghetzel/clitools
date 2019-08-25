@@ -38,6 +38,8 @@ func NewClient() *Client {
 func (self *Client) Connect() error {
 	if db, err := pivot.NewDatabase(self.Database); err == nil {
 		Institutions = db.AttachCollection(InstitutionsSchema)
+		Accounts = db.AttachCollection(AccountsSchema)
+		Transactions = db.AttachCollection(TransactionsSchema)
 
 		self.db = db
 
