@@ -5,12 +5,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
-	"github.com/aclindsa/ofxgo"
 	"github.com/ghetzel/go-stockutil/log"
 	"github.com/ghetzel/go-stockutil/typeutil"
+	"github.com/ghetzel/ofxgo"
 	"github.com/ghetzel/pivot/v3"
 	"github.com/ghetzel/pivot/v3/dal"
 	"golang.org/x/crypto/nacl/secretbox"
@@ -35,29 +37,37 @@ func (self *Institution) String() string {
 }
 
 func (self *Institution) Ping() error {
-	// if req, err := self.ofxreq(&ofxgo.ProfileRequest{
-	// 	TrnUID: self.txnID(),
-	// 	DtProfUp: ofxgo.Date{
-	// 		Time: time.Unix(0, 0),
-	// 	},
-	// }); err == nil {
-	// 	if res, err := self.ofxdo(req); err == nil {
-	// 		log.Dump(res)
-	// 		return nil
-	// 	} else {
-	// 		return err
-	// 	}
-	// } else {
-	// 	return err
-	// }
+	if req, err := self.ofxreq(&ofxgo.AcctInfoRequest{
+		TrnUID: self.txnID(),
+	}); err == nil {
+		if _, err := self.ofxdo(req); err == nil {
+			return nil
+		} else {
+			return err
+		}
+	} else {
+		return err
+	}
 
 	return nil
 }
 
 func (self *Institution) ofxdo(req *ofxgo.Request) (*ofxgo.Response, error) {
-	var client ofxgo.Client
+	client := &ofxgo.BasicClient{
+		SpecVersion: ofxgo.OfxVersion102,
+		PreRequestFuncs: []ofxgo.PreRequestFunc{
+			func(req *http.Request) error {
+				req.Header.Set(`User-Agent`, ``)
+				return nil
+			},
+		},
+	}
 
-	if res, err := client.Request(req); err == nil {
+	res, err := client.Request(req)
+	// log.Debug("RES:")
+	// log.Dump(res)
+
+	if err == nil {
 		if code := res.Signon.Status.Code; code == 0 {
 			return res, nil
 		} else {
@@ -82,16 +92,40 @@ func (self *Institution) txnID() ofxgo.UID {
 
 func (self *Institution) ofxreq(msgs ...ofxgo.Message) (*ofxgo.Request, error) {
 	if password, err := self.Password(); err == nil {
-		return &ofxgo.Request{
-			URL:  self.URL,
-			Bank: msgs,
+		req := &ofxgo.Request{
+			URL: self.URL,
 			Signon: ofxgo.SignonRequest{
 				UserID:   ofxgo.String(self.Username),
 				UserPass: ofxgo.String(password),
 				Org:      ofxgo.String(self.Organization),
-				Fid:      ofxgo.String(self.FID),
+				Fid:      ofxgo.String(typeutil.String(self.FID)),
 			},
-		}, nil
+		}
+
+		// log.Debug("REQ:")
+		// log.Dump(req)
+
+		for _, msg := range msgs {
+			switch msg.(type) {
+			case *ofxgo.ProfileRequest:
+				req.Prof = append(req.Prof, msg)
+			case *ofxgo.AcctInfoRequest:
+				req.Signup = append(req.Signup, msg)
+			case *ofxgo.StatementRequest:
+				req.Bank = append(req.Bank, msg)
+			case *ofxgo.CCStatementRequest:
+				req.CreditCard = append(req.CreditCard, msg)
+			case *ofxgo.InvStatementRequest:
+				req.InvStmt = append(req.InvStmt, msg)
+			case *ofxgo.SecListRequest:
+				req.SecList = append(req.SecList, msg)
+			default:
+				return nil, fmt.Errorf("Unsupported message type %T", msg)
+			}
+		}
+
+		// return nil, fmt.Errorf("test")
+		return req, nil
 	} else {
 		return nil, err
 	}
@@ -137,16 +171,16 @@ func (self *Institution) Password() (string, error) {
 	}
 }
 
-func (self *Institution) Resync() error {
+func (self *Institution) Sync() error {
 	var merr error
 
-	if err := self.resyncAccounts(); err != nil {
+	if err := self.syncAccounts(); err != nil {
 		return err
 	}
 
 	if accounts, err := self.Accounts(); err == nil {
 		for _, account := range accounts {
-			merr = log.AppendError(merr, account.Resync())
+			merr = log.AppendError(merr, account.Sync())
 		}
 
 		return merr
@@ -181,13 +215,47 @@ func (self *Institution) Account(id string) (*Account, error) {
 	}
 }
 
-func (self *Institution) resyncAccounts() error {
+func (self *Institution) syncAccounts() error {
+	var merr error
+
 	if req, err := self.ofxreq(&ofxgo.AcctInfoRequest{
 		TrnUID: self.txnID(),
 	}); err == nil {
 		if res, err := self.ofxdo(req); err == nil {
-			log.Dump(res)
-			return nil
+			for _, msg := range res.Signup {
+				if typed, ok := msg.(*ofxgo.AcctInfoResponse); ok {
+					for _, info := range typed.AcctInfo {
+						account := Account{
+							Institution: self.ID,
+						}
+
+						if invAcct := info.InvAcctInfo; invAcct != nil {
+							account.ID = invAcct.InvAcctFrom.AcctID.String()
+							account.Type = `brokerage`
+							account.Broker = invAcct.InvAcctFrom.BrokerID.String()
+						}
+
+						if bankAcct := info.BankAcctInfo; bankAcct != nil {
+							account.ID = bankAcct.BankAcctFrom.AcctID.String()
+							account.Type = strings.ToLower(bankAcct.BankAcctFrom.AcctType.String())
+							account.Routing = bankAcct.BankAcctFrom.BankID.String()
+						}
+
+						if account.ID == `` {
+							merr = log.AppendError(merr, fmt.Errorf("Could not determine account ID"))
+							continue
+						}
+
+						if Accounts.Exists([]string{account.Institution, account.ID}) {
+							merr = log.AppendError(merr, Accounts.Update(&account))
+						} else {
+							merr = log.AppendError(merr, Accounts.Create(&account))
+						}
+					}
+				}
+			}
+
+			return merr
 		} else {
 			return err
 		}

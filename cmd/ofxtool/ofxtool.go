@@ -64,12 +64,12 @@ func (self *Client) Connect() error {
 	}
 }
 
-func (self *Client) Resync() error {
+func (self *Client) Sync() error {
 	var merr error
 
 	if institutions, err := self.Institutions(); err == nil {
 		for _, institution := range institutions {
-			merr = log.AppendError(merr, institution.Resync())
+			merr = log.AppendError(merr, institution.Sync())
 		}
 
 		return merr
@@ -118,4 +118,8 @@ func (self *Client) CreateInstitution(institution *Institution, password string)
 	} else {
 		return err
 	}
+}
+
+func (self *Client) RemoveInstitution(id string) error {
+	return Institutions.Delete(id)
 }

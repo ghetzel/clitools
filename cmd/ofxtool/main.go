@@ -46,6 +46,12 @@ func main() {
 
 	app.Commands = []cli.Command{
 		{
+			Name:  `sync`,
+			Usage: `Synchronize all data from all institutions.`,
+			Action: func(c *cli.Context) {
+				log.FatalIf(client.Sync())
+			},
+		}, {
 			Name:  `list`,
 			Usage: `List all saved institutions`,
 			Action: func(c *cli.Context) {
@@ -56,19 +62,53 @@ func main() {
 				}
 			},
 		}, {
-			Name:  `accounts`,
-			Usage: `List all accounts for the given institution(s)`,
+			Name:      `accounts`,
+			Usage:     `List all accounts for the given institution(s)`,
+			ArgsUsage: `[INSTITUTION ..]`,
 			Action: func(c *cli.Context) {
 				if institutions, err := client.Institutions(); err == nil {
+					var matches []*Account
+
 					for _, institution := range institutions {
 						if c.NArg() == 0 || sliceutil.ContainsString(c.Args(), institution.ID) {
 							if accounts, err := institution.Accounts(); err == nil {
-								log.Dump(accounts)
+								matches = append(matches, accounts...)
 							} else {
 								log.Errorf("institution %v: %v", institution, err)
 							}
 						}
 					}
+
+					clitools.Print(c, matches, nil)
+				} else {
+					log.Fatal(err)
+				}
+			},
+		}, {
+			Name:      `transactions`,
+			Usage:     `List all transactions for the given accounts(s)`,
+			ArgsUsage: `[ACCOUNT ..]`,
+			Action: func(c *cli.Context) {
+				if institutions, err := client.Institutions(); err == nil {
+					var matches []*Transaction
+
+					for _, institution := range institutions {
+						if accounts, err := institution.Accounts(); err == nil {
+							for _, account := range accounts {
+								if c.NArg() == 0 || sliceutil.ContainsString(c.Args(), account.ID) {
+									if txns, err := account.Transactions(); err == nil {
+										matches = append(matches, txns...)
+									} else {
+										log.Errorf("account %v/%v: %v", account.Institution, account.ID, err)
+									}
+								}
+							}
+						} else {
+							log.Errorf("institution %v: %v", institution, err)
+						}
+					}
+
+					clitools.Print(c, matches, nil)
 				} else {
 					log.Fatal(err)
 				}
@@ -152,6 +192,19 @@ func main() {
 					}
 				} else {
 					log.Fatal("pass: %v", err)
+				}
+			},
+		}, {
+			Name:      `rm`,
+			Usage:     `Remove an institution by ID.`,
+			ArgsUsage: `ID [ID ..]`,
+			Action: func(c *cli.Context) {
+				if c.NArg() < 1 {
+					log.Fatalf("Must provide an Institution ID to remove")
+				}
+
+				for _, id := range c.Args() {
+					log.FatalIf(client.RemoveInstitution(id))
 				}
 			},
 		},
