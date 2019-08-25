@@ -49,17 +49,25 @@ func main() {
 			if doc, err := htmldoc(os.Stdin); err == nil {
 				elements := make([]map[string]interface{}, 0)
 
-				doc.Find(strings.Join(c.Args(), ` `)).Each(func(i int, match *goquery.Selection) {
-					if len(match.Nodes) > 0 {
-						for _, node := range match.Nodes {
-							if nodeData := htmlNodeToMap(node); len(nodeData) > 0 {
-								elements = append(elements, nodeData)
+				if len(c.Args()) == 0 {
+					if out, err := doc.Html(); err == nil {
+						fmt.Println(string(out))
+					} else {
+						log.Fatalf("error formatting HTML: %v", err)
+					}
+				} else {
+					doc.Find(strings.Join(c.Args(), ` `)).Each(func(i int, match *goquery.Selection) {
+						if len(match.Nodes) > 0 {
+							for _, node := range match.Nodes {
+								if nodeData := htmlNodeToMap(node); len(nodeData) > 0 {
+									elements = append(elements, nodeData)
+								}
 							}
 						}
-					}
-				})
+					})
 
-				clitools.Print(c, elements, nil)
+					clitools.Print(c, elements, nil)
+				}
 			} else {
 				log.Fatalf("Cannot parse document: %v", err)
 			}

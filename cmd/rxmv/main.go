@@ -84,17 +84,7 @@ func main() {
 			log.Fatalf("malformed s/// pattern")
 		} else {
 			sep := string(spattern[0])
-			find, repl, flags := stringutil.SplitTriple(spattern[1:], sep)
-			all := false
-
-			if flags != `` {
-				if strings.Contains(flags, `g`) {
-					all = true
-					flags = strings.Replace(flags, `g`, ``, -1)
-				}
-
-				find = fmt.Sprintf("(?%s)%s", flags, find)
-			}
+			find, repl, _ := stringutil.SplitTriple(spattern[1:], sep)
 
 			if rx, err := regexp.Compile(find); err == nil {
 				table := tabwriter.NewWriter(os.Stdout, 1, 4, 1, ' ', 0)
@@ -102,22 +92,7 @@ func main() {
 
 				for _, before := range filenames {
 					if rx.MatchString(before) {
-						var after string
-
-						if all {
-							after = rx.ReplaceAllString(before, repl)
-						} else {
-							didit := false
-							after = rx.ReplaceAllStringFunc(before, func(match string) string {
-								if didit {
-									return match
-								} else {
-									didit = true
-									return repl
-								}
-							})
-						}
-
+						after := rx.ReplaceAllString(before, repl)
 						fmt.Fprintf(table, "%s\t->\t%s\n", before, after)
 						moves[before] = after
 					}
