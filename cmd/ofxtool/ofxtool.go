@@ -40,6 +40,7 @@ func (self *Client) Connect() error {
 		Institutions = db.AttachCollection(InstitutionsSchema)
 		Accounts = db.AttachCollection(AccountsSchema)
 		Transactions = db.AttachCollection(TransactionsSchema)
+		Payees = db.AttachCollection(PayeesSchema)
 
 		self.db = db
 
@@ -64,24 +65,54 @@ func (self *Client) Connect() error {
 	}
 }
 
-func (self *Client) Sync() error {
+func (self *Client) Sync(fast bool) error {
 	var merr error
 
 	if institutions, err := self.Institutions(); err == nil {
 		for _, institution := range institutions {
-			merr = log.AppendError(merr, institution.Sync())
+			merr = log.AppendError(merr, institution.Sync(fast))
 		}
-
-		return merr
 	} else {
 		return err
 	}
+
+	if payees, err := self.Payees(); err == nil {
+		for _, payee := range payees {
+			merr = log.AppendError(merr, payee.Sync(fast))
+		}
+	} else {
+		return err
+	}
+
+	return merr
 }
 
-func (self *Client) Institutions() ([]*Institution, error) {
+func (self *Client) Payees(filters ...interface{}) ([]*Payee, error) {
+	var payees []*Payee
+
+	if len(filters) == 0 || filters[0] == `` {
+		filters = []interface{}{`all`}
+	}
+
+	if err := Payees.Find(filters[0], &payees); err == nil {
+		for _, i := range payees {
+			i.client = self
+		}
+
+		return payees, nil
+	} else {
+		return nil, err
+	}
+}
+
+func (self *Client) Institutions(filters ...interface{}) ([]*Institution, error) {
 	var institutions []*Institution
 
-	if err := Institutions.All(&institutions); err == nil {
+	if len(filters) == 0 || filters[0] == `` {
+		filters = []interface{}{`all`}
+	}
+
+	if err := Institutions.Find(filters[0], &institutions); err == nil {
 		for _, i := range institutions {
 			i.client = self
 		}

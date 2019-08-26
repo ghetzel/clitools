@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 
 	"github.com/ghetzel/cli"
@@ -48,8 +49,14 @@ func main() {
 		{
 			Name:  `sync`,
 			Usage: `Synchronize all data from all institutions.`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  `full, F`,
+					Usage: `Perform a complete sync of all transactions, even ones we already have.`,
+				},
+			},
 			Action: func(c *cli.Context) {
-				log.FatalIf(client.Sync())
+				log.FatalIf(client.Sync(!c.Bool(`full`)))
 			},
 		}, {
 			Name:  `list`,
@@ -206,6 +213,114 @@ func main() {
 				for _, id := range c.Args() {
 					log.FatalIf(client.RemoveInstitution(id))
 				}
+			},
+		}, {
+			Name:  `payees`,
+			Usage: `Manage payee queries`,
+			Subcommands: []cli.Command{
+				{
+					Name:  `list`,
+					Usage: `List registered payees`,
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  `filter, f`,
+							Usage: `Optional filter to narrow down the list.`,
+						},
+					},
+					Action: func(c *cli.Context) {
+						var payees []*Payee
+
+						if err := Payees.Find(c.String(`filter`), &payees); err == nil {
+							clitools.Print(c, payees, nil)
+						} else {
+							log.Fatal(err)
+						}
+					},
+				}, {
+					Name:      `rm`,
+					Usage:     `Remove registered payee(s)`,
+					ArgsUsage: `ID [ID ..]`,
+					Action: func(c *cli.Context) {
+						log.FatalIf(Payees.Delete(sliceutil.Sliceify(c.Args())...))
+					},
+				}, {
+					Name:  `query`,
+					Usage: `Retrieve the transactions that match the given payee(s).`,
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  `filter, f`,
+							Usage: `Optional filter to narrow down the list.`,
+						},
+					},
+					Action: func(c *cli.Context) {
+						if payees, err := client.Payees(c.String(`filter`)); err == nil {
+							var transactions []*Transaction
+
+							for _, payee := range payees {
+								if txns, err := payee.WithClient(client).Transactions(); err == nil {
+									transactions = append(transactions, txns...)
+								} else {
+									log.Fatal(err)
+								}
+							}
+
+							clitools.Print(c, transactions, nil)
+						} else {
+							log.Fatal(err)
+						}
+					},
+				}, {
+					Name:      `update`,
+					Usage:     `Create or update a payee`,
+					ArgsUsage: `[ID]`,
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  `name, n`,
+							Usage: `The name of the institution.`,
+						},
+						cli.StringSliceFlag{
+							Name:  `institution, i`,
+							Usage: `A filter that the transaction's institution must match.`,
+						},
+						cli.StringSliceFlag{
+							Name:  `account, a`,
+							Usage: `A filter that the transaction's account must match.`,
+						},
+						cli.StringSliceFlag{
+							Name:  `transaction, t`,
+							Usage: `A filter that the transaction must match.`,
+						},
+					},
+					Action: func(c *cli.Context) {
+						var payee Payee
+
+						if id := c.Args().First(); id != `` {
+							log.FatalIf(Payees.Get(id, &payee))
+						}
+
+						if c.IsSet(`name`) {
+							payee.Name = c.String(`name`)
+						}
+
+						if v := c.StringSlice(`institution`); len(v) > 0 {
+							payee.InstitutionQuery = strings.Join(v, `/`)
+						}
+
+						if v := c.StringSlice(`account`); len(v) > 0 {
+							payee.AccountQuery = strings.Join(v, `/`)
+						}
+
+						if v := c.StringSlice(`transaction`); len(v) > 0 {
+							payee.TransactionQuery = strings.Join(v, `/`)
+						}
+
+						if payee.ID == `` {
+							log.FatalIf(Payees.Create(&payee))
+						} else {
+							log.FatalIf(Payees.Update(&payee))
+						}
+					},
+				},
 			},
 		},
 	}

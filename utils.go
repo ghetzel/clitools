@@ -8,10 +8,11 @@ import (
 	tabwriter "github.com/NonerKao/color-aware-tabwriter"
 	"github.com/ghetzel/cli"
 	"github.com/ghetzel/go-stockutil/sliceutil"
+	"github.com/ghetzel/go-stockutil/typeutil"
 )
 
 func Print(c *cli.Context, data interface{}, txtfn func()) {
-	if data != nil {
+	if data != nil && ((typeutil.IsArray(data) || typeutil.IsMap(data)) && sliceutil.Len(data) > 0) {
 		switch c.GlobalString(`format`) {
 		case `json`:
 			enc := json.NewEncoder(os.Stdout)

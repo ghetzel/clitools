@@ -171,16 +171,16 @@ func (self *Institution) Password() (string, error) {
 	}
 }
 
-func (self *Institution) Sync() error {
+func (self *Institution) Sync(fast bool) error {
 	var merr error
 
-	if err := self.syncAccounts(); err != nil {
+	if err := self.syncAccounts(fast); err != nil {
 		return err
 	}
 
 	if accounts, err := self.Accounts(); err == nil {
 		for _, account := range accounts {
-			merr = log.AppendError(merr, account.Sync())
+			merr = log.AppendError(merr, account.Sync(fast))
 		}
 
 		return merr
@@ -189,10 +189,14 @@ func (self *Institution) Sync() error {
 	}
 }
 
-func (self *Institution) Accounts() ([]*Account, error) {
+func (self *Institution) Accounts(filters ...interface{}) ([]*Account, error) {
 	var accounts []*Account
 
-	if err := Accounts.All(&accounts); err == nil {
+	if len(filters) == 0 || filters[0] == `` {
+		filters = []interface{}{`all`}
+	}
+
+	if err := Accounts.Find(filters[0], &accounts); err == nil {
 		for _, account := range accounts {
 			account.institution = self
 		}
@@ -215,7 +219,7 @@ func (self *Institution) Account(id string) (*Account, error) {
 	}
 }
 
-func (self *Institution) syncAccounts() error {
+func (self *Institution) syncAccounts(fast bool) error {
 	var merr error
 
 	if req, err := self.ofxreq(&ofxgo.AcctInfoRequest{

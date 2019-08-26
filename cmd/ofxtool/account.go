@@ -8,6 +8,7 @@ import (
 	"github.com/ghetzel/ofxgo"
 	"github.com/ghetzel/pivot/v3"
 	"github.com/ghetzel/pivot/v3/dal"
+	"github.com/ghetzel/pivot/v3/filter"
 )
 
 var Accounts pivot.Model
@@ -24,15 +25,15 @@ type Account struct {
 	institution      *Institution
 }
 
-func (self *Account) Sync() error {
-	if err := self.syncTransactions(); err != nil {
+func (self *Account) Sync(fast bool) error {
+	if err := self.syncTransactions(fast); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (self *Account) syncTransactions() error {
+func (self *Account) syncTransactions(fast bool) error {
 	if self.institution == nil {
 		return fmt.Errorf("cannot sync account without a parent institution")
 	}
@@ -46,9 +47,23 @@ func (self *Account) syncTransactions() error {
 			return fmt.Errorf("[%v] sync: cannot sync checking account without routing number", self.ID)
 		}
 
+		var earliest *ofxgo.Date
+
+		if fast {
+			if txn, ok := self.mostRecentTransaction(); ok {
+				earliest = &ofxgo.Date{
+					Time: txn.PostedAt,
+				}
+
+				log.Infof("[%v] sync: only requesting transactions since %v", self.ID, earliest.Time)
+			}
+		}
+
 		reqmsg = &ofxgo.StatementRequest{
 			TrnUID:  self.institution.txnID(),
-			Include: ofxgo.Boolean(true),
+			Include: true,
+			// IncludePending: true,
+			DtStart: earliest,
 			BankAcctFrom: ofxgo.BankAcct{
 				BankID:   ofxgo.String(self.Routing),
 				AcctID:   ofxgo.String(self.ID),
@@ -86,6 +101,27 @@ func (self *Account) syncTransactions() error {
 	}
 }
 
+func (self *Account) mostRecentTransaction() (*Transaction, bool) {
+	var txns []*Transaction
+
+	if f, err := filter.Parse(map[string]interface{}{
+		`Account`: self.ID,
+	}); err == nil {
+		f.Limit = 1
+		f.Sort = []string{`-PostedAt`}
+
+		if err := Transactions.Find(f, &txns); err == nil {
+			if len(txns) == 1 {
+				return txns[0], true
+			}
+		}
+	} else {
+		panic("filter: " + err.Error())
+	}
+
+	return nil, false
+}
+
 func (self *Account) saveTransaction(txn *ofxgo.Transaction) error {
 	amt, _ := txn.TrnAmt.Float64()
 	desc := ``
@@ -110,6 +146,9 @@ func (self *Account) saveTransaction(txn *ofxgo.Transaction) error {
 		SIC:           int(txn.SIC),
 		PostedAt:      txn.DtPosted.Time,
 	}
+
+	// log.Debugf("DtUser: %v", txn.DtUser)
+	// log.Debugf("DtAvail: %v", txn.DtAvail)
 
 	if cf := txn.CorrectFiTID.String(); cf != `` {
 		transaction.CorrectionFor = cf
@@ -149,10 +188,14 @@ func (self *Account) trnTypeToString(ofxTT string) string {
 	}
 }
 
-func (self *Account) Transactions() ([]*Transaction, error) {
+func (self *Account) Transactions(filters ...interface{}) ([]*Transaction, error) {
 	var txns []*Transaction
 
-	if err := Transactions.All(&txns); err == nil {
+	if len(filters) == 0 || filters[0] == `` {
+		filters = []interface{}{`all`}
+	}
+
+	if err := Transactions.Find(filters[0], &txns); err == nil {
 		for _, txn := range txns {
 			txn.account = self
 		}
