@@ -322,6 +322,21 @@ func main() {
 					},
 				},
 			},
+		}, {
+			Name:  `server`,
+			Usage: `Start the API server and Web UI`,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  `address, a`,
+					Usage: `The host:port the server should listen on.`,
+					Value: `127.0.0.1:8689`,
+				},
+			},
+			Action: func(c *cli.Context) {
+				server := NewServer(client)
+
+				log.FatalIf(server.ListenAndServe(c.String(`address`)))
+			},
 		},
 	}
 
