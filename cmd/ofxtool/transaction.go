@@ -1,13 +1,53 @@
 package main
 
 import (
+	"math"
+	"sort"
 	"time"
 
 	"github.com/ghetzel/pivot/v3"
 	"github.com/ghetzel/pivot/v3/dal"
+	"gonum.org/v1/gonum/floats"
+	"gonum.org/v1/gonum/stat"
 )
 
 var Transactions pivot.Model
+
+type TransactionList []*Transaction
+
+func (self TransactionList) Amounts() (amounts []float64) {
+	for _, txn := range self {
+		// invert the signs because for statistics purposes,
+		// we're interested in seeing debits as positive values
+		amounts = append(amounts, -1*txn.Amount)
+	}
+
+	sort.Float64s(amounts)
+	return
+}
+
+func (self TransactionList) Rollup() map[string]interface{} {
+	rollups := make(map[string]interface{})
+	amounts := self.Amounts()
+
+	rollups[`Count`] = float64(len(self))
+	rollups[`Total`] = floats.Sum(amounts)
+	rollups[`Minimum`] = floats.Min(amounts)
+	rollups[`Maximum`] = floats.Max(amounts)
+	rollups[`Median`] = stat.Quantile(0.5, stat.Empirical, amounts, nil)
+	rollups[`Mode`], rollups[`ModeCount`] = stat.Mode(amounts, nil)
+	mean, stdev := stat.MeanStdDev(amounts, nil)
+
+	if !math.IsNaN(mean) {
+		rollups[`Mean`] = mean
+	}
+
+	if !math.IsNaN(stdev) {
+		rollups[`StandardDeviation`] = stdev
+	}
+
+	return rollups
+}
 
 type Transaction struct {
 	Account        string `pivot:",identity"`

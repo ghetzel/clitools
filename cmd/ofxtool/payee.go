@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
-	"sort"
 
+	"github.com/ghetzel/go-stockutil/maputil"
 	"github.com/ghetzel/pivot/v3"
 	"github.com/ghetzel/pivot/v3/dal"
-	"gonum.org/v1/gonum/floats"
-	"gonum.org/v1/gonum/stat"
 )
 
 var Payees pivot.Model
@@ -18,7 +16,7 @@ type Payee struct {
 	InstitutionQuery string
 	AccountQuery     string
 	TransactionQuery string
-	Rollups          map[string]float64
+	Rollups          map[string]interface{}
 	client           *Client
 }
 
@@ -29,24 +27,38 @@ func (self *Payee) WithClient(client *Client) *Payee {
 
 func (self *Payee) Sync(fast bool) error {
 	if transactions, err := self.Transactions(); err == nil {
-		amounts := make([]float64, len(transactions))
-		rollups := make(map[string]float64)
+		rollups := transactions.Rollup()
+		histoMonths := make(map[string]TransactionList)
+		histoYears := make(map[string]TransactionList)
 
-		for i, txn := range transactions {
-			// invert the signs because for statistics purposes,
-			// we're interested in seeing debits as positive values
-			amounts[i] = -1 * txn.Amount
+		for _, txn := range transactions {
+			histoMonths[txn.PostedAt.Format(`2006-01`)] = append(histoMonths[txn.PostedAt.Format(`2006-01`)], txn)
+			histoYears[txn.PostedAt.Format(`2006`)] = append(histoYears[txn.PostedAt.Format(`2006`)], txn)
 		}
 
-		sort.Float64s(amounts)
+		byMonth := make([]map[string]interface{}, 0)
+		byYear := make([]map[string]interface{}, 0)
 
-		rollups[`Count`] = float64(len(transactions))
-		rollups[`Total`] = floats.Sum(amounts)
-		rollups[`Minimum`] = floats.Min(amounts)
-		rollups[`Maximum`] = floats.Max(amounts)
-		rollups[`Median`] = stat.Quantile(0.5, stat.Empirical, amounts, nil)
-		rollups[`Mode`], rollups[`ModeCount`] = stat.Mode(amounts, nil)
-		rollups[`Mean`], rollups[`StandardDeviation`] = stat.MeanStdDev(amounts, nil)
+		for ym, txns := range histoMonths {
+			m, _ := maputil.Merge(txns.Rollup(), map[string]interface{}{
+				`ID`: ym,
+			})
+
+			byMonth = append(byMonth, m)
+		}
+
+		for y, txns := range histoYears {
+			m, _ := maputil.Merge(txns.Rollup(), map[string]interface{}{
+				`ID`: y,
+			})
+
+			byYear = append(byYear, m)
+		}
+
+		rollups[`Group`] = map[string]interface{}{
+			`ByMonth`: byMonth,
+			`ByYear`:  byYear,
+		}
 
 		self.Rollups = rollups
 
@@ -56,8 +68,8 @@ func (self *Payee) Sync(fast bool) error {
 	}
 }
 
-func (self *Payee) Transactions() ([]*Transaction, error) {
-	var transactions []*Transaction
+func (self *Payee) Transactions() (TransactionList, error) {
+	var transactions TransactionList
 
 	if self.client == nil {
 		return nil, fmt.Errorf("payee: Client must be provided")
