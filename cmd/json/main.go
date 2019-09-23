@@ -96,8 +96,8 @@ func main() {
 				client.SetInsecureTLS(c.Bool(`insecure`))
 
 				method := strings.ToUpper(c.String(`method`))
-				params := sliceOfPairsToMap(c.StringSlice(`params`))
-				headers := sliceOfPairsToMap(c.StringSlice(`headers`))
+				params := sliceOfPairsToMap(c.StringSlice(`param`))
+				headers := sliceOfPairsToMap(c.StringSlice(`header`))
 
 				if c.IsSet(`username`) || c.IsSet(`password`) {
 					client.SetBasicAuth(c.String(`username`), c.String(`password`))
