@@ -26,7 +26,7 @@ func main() {
 		cli.StringFlag{
 			Name:   `log-level, L`,
 			Usage:  `Level of log output verbosity`,
-			Value:  `info`,
+			Value:  `warning`,
 			EnvVar: `LOGLEVEL`,
 		},
 		cli.StringFlag{
@@ -94,6 +94,29 @@ func main() {
 				fmt.Println(string(out))
 			} else if client, err := httputil.NewClient(url); err == nil {
 				client.SetInsecureTLS(c.Bool(`insecure`))
+				client.SetPreRequestHook(func(req *http.Request) (interface{}, error) {
+					log.Debugf("[http] > %v %v", req.Method, req.URL)
+
+					for k, vs := range req.Header {
+						for _, v := range vs {
+							log.Debugf("[http] >   %v: %v", k, v)
+						}
+					}
+
+					return nil, nil
+				})
+
+				client.SetPostRequestHook(func(res *http.Response, _ interface{}) error {
+					log.Debugf("[http] < %v", res.Status)
+
+					for k, vs := range res.Header {
+						for _, v := range vs {
+							log.Debugf("[http] <  %v: %v", k, v)
+						}
+					}
+
+					return nil
+				})
 
 				method := strings.ToUpper(c.String(`method`))
 				params := sliceOfPairsToMap(c.StringSlice(`param`))
@@ -107,11 +130,6 @@ func main() {
 					headers[`Content-Type`] = ct
 				}
 
-				client.SetPreRequestHook(func(req *http.Request) (interface{}, error) {
-					log.Infof("> HTTP %v %v", req.Method, req.URL)
-					return req, nil
-				})
-
 				res, err := client.Request(httputil.Method(method), ``, data, params, headers)
 
 				if res != nil {
@@ -120,9 +138,7 @@ func main() {
 					fmt.Println(``)
 				}
 
-				if err == nil {
-					log.Infof("< %v", res.Status)
-				} else {
+				if err != nil {
 					log.Fatalf("< %v", err)
 				}
 			} else {
