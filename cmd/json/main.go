@@ -107,7 +107,7 @@ func main() {
 				})
 
 				client.SetPostRequestHook(func(res *http.Response, _ interface{}) error {
-					log.Debugf("[http] < %v", res.Status)
+					log.Debugf("[http] < %s %s", res.Proto, res.Status)
 
 					for k, vs := range res.Header {
 						for _, v := range vs {
