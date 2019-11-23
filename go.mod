@@ -5,7 +5,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/emersion/go-imap v1.0.0-beta.4
 	github.com/ghetzel/cli v1.17.0
-	github.com/ghetzel/go-stockutil v1.8.3
+	github.com/ghetzel/go-stockutil v1.8.7
 	github.com/ghodss/yaml v1.0.0
 	github.com/jdxcode/netrc v0.0.0-20190329161231-b36f1c51d91d
 	golang.org/x/net v0.0.0-20190620200207-3b0461eec859

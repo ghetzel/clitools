@@ -20,6 +20,7 @@ github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197 h1:rDJPbyliyym8ZL
 github.com/emersion/go-sasl v0.0.0-20161116183048-7e096a0a6197/go.mod h1:G/dpzLu16WtQpBfQ/z3LYiYJn3ZhKSGWn83fyoyQe/k=
 github.com/emersion/go-textwrapper v0.0.0-20160606182133-d0e65e56babe/go.mod h1:aqO8z8wPrjkscevZJFVE1wXJrLpC5LtJG7fqLOsPb2U=
 github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5/go.mod h1:a2zkGnVExMxdzMo3M0Hi/3sEU+cWnZpSni0O6/Yb/P0=
+github.com/ernesto-jimenez/gogen v0.0.0-20180125220232-d7d4131e6607/go.mod h1:Cg4fM0vhYWOZdgM7RIOSTRNIc8/VT7CXClC3Ni86lu4=
 github.com/fatih/structs v1.0.0 h1:BrX964Rv5uQ3wwS+KRUAJCBBw5PQmgJfJ6v4yly5QwU=
 github.com/fatih/structs v1.0.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/ghetzel/cli v1.17.0 h1:gMbJBrjPMz7JRsYrcV7sK60HCqQxwI/xO8dEjP6Z1yk=
@@ -28,6 +29,9 @@ github.com/ghetzel/go-defaults v1.2.0 h1:U1T64bxhBc6nVZ68QXch1hoHq43h6isqgbvG7kx
 github.com/ghetzel/go-defaults v1.2.0/go.mod h1:xWhTgOoc4UNWT7sl3oyNFqtKzEbUKI9C3rqbwtwdxFw=
 github.com/ghetzel/go-stockutil v1.8.3 h1:iJpfCNXsp91GWkl0qOzHEUHMUQOvr/Gz9yhGdQTa4ss=
 github.com/ghetzel/go-stockutil v1.8.3/go.mod h1:zHk/p1VcoQbWngvmelsQbFbZ6eIQDA4D3ryZPYLoZ1I=
+github.com/ghetzel/go-stockutil v1.8.7 h1:KHJaivJ1mCKcFR+kufqlnvCkvTwgbp++ULDqjmra1Dw=
+github.com/ghetzel/go-stockutil v1.8.7/go.mod h1:jbu+A8wFb5gPWcIPGf9OTxbYXghvUyoFAM3FrjmJJK4=
+github.com/ghetzel/testify v1.4.1/go.mod h1:FwvFn1OiGEUgzhS3ySCjTBG7/sez0WRvOAxz5uQU8so=
 github.com/ghetzel/uuid v0.0.0-20171129191014-dec09d789f3d h1:YVJe7KwVYazt90hCc/q2dYJVS3062AY6QdT6iHd+Kh8=
 github.com/ghetzel/uuid v0.0.0-20171129191014-dec09d789f3d/go.mod h1:7CCemW/spiphukVWb/v2WWYeZkydh30TwSRBh48irZQ=
 github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=

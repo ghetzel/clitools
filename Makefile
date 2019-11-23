@@ -1,7 +1,7 @@
 .PHONY: all cmd build
 .EXPORT_ALL_VARIABLES:
 
-TOOLS           := $(wildcard cmd/*)
+TOOLS           := $(subst cmd,bin,$(wildcard cmd/*))
 GO111MODULE     ?= on
 LOCALS          := $(shell find . -type f -name '*.go' 2> /dev/null)
 
@@ -17,7 +17,7 @@ fmt:
 
 .PHONY: $(TOOLS)
 $(TOOLS):
-	go build -o $(subst cmd,bin,$(@)) $(@)/*.go
+	go build -o $(@) $(subst bin,cmd,$(@))/*.go
 
 build: $(TOOLS)
 	cp bin/* ~/lib/apps/clitools/linux/amd64/
