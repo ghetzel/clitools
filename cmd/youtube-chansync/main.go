@@ -18,6 +18,7 @@ type downloadStats struct {
 	NewFilesDownloaded   int
 	VideosDownloaded     int
 	MetadataDownloaded   int
+	SubtitlesDownloaded  int
 	ThumbnailsDownloaded int
 }
 
@@ -54,6 +55,11 @@ func main() {
 			Usage: `The name of the channel info file (.nfo) under the channel directory.`,
 			Value: `youtube.nfo`,
 		},
+		cli.StringFlag{
+			Name:  `archive-file, A`,
+			Usage: `The name of the file containing a list of IDs already downloaded (inside each channel directory)`,
+			Value: `archive.txt`,
+		},
 		cli.BoolFlag{
 			Name:  `dry-run, n`,
 			Usage: `Don't actually write anything to disk.`,
@@ -88,15 +94,18 @@ func main() {
 
 					if stats, err := syncChannel(c, ytdl, dir); err == nil {
 						log.Debugf(
-							"* channel: %s new=%d videos=%d meta=%d thumbs=%d",
+							"* channel: %s new=%d videos=%d meta=%d thumbs=%d subs=%d",
 							name,
 							stats.NewFilesDownloaded,
 							stats.VideosDownloaded,
 							stats.MetadataDownloaded,
 							stats.ThumbnailsDownloaded,
+							stats.SubtitlesDownloaded,
 						)
 
-						log.Debugf("Channel %s synced successfully", name)
+						if stats.VideosDownloaded > 0 {
+							log.Noticef("[channel] %s: added %d", name, stats.VideosDownloaded)
+						}
 					} else {
 						log.Error(err)
 					}
@@ -117,7 +126,7 @@ func syncChannel(c *cli.Context, ytdl string, chanpath string) (downloadStats, e
 	name := filepath.Base(chanpath)
 	nfofile := filepath.Join(chanpath, c.String(`nfofile`))
 
-	log.Infof("Syncing channel %s", name)
+	log.Infof("[channel] syncing %s", name)
 	log.Debugf("* chandir: %s", chanpath)
 
 	if fileutil.IsNonemptyFile(nfofile) {
@@ -131,13 +140,14 @@ func syncChannel(c *cli.Context, ytdl string, chanpath string) (downloadStats, e
 				`--no-color`,
 				`--no-call-home`,
 				`--add-metadata`,
-				`--output`, `%(upload_date)s - %(title)s.%(ext)s`,
+				`--output`, fmt.Sprintf("%s - %%(upload_date)s - %%(title)s.%%(ext)s", nfo.Title),
 				`--format`, `best`,
 				`--write-info-json`,
 				`--write-auto-sub`,
+				`--write-thumbnail`,
 				`--sub-lang`, `en`,
 				`--sub-format`, `best`,
-				`--download-archive`, `archive.txt`,
+				`--download-archive`, c.String(`archive-file`),
 			}
 
 			if c.Bool(`dry-run`) {
@@ -150,16 +160,29 @@ func syncChannel(c *cli.Context, ytdl string, chanpath string) (downloadStats, e
 			dl := executil.Command(ytdl, dlArgs...)
 			dl.Dir = chanpath
 			outparse := func(line string, serr bool) {
-				ll := log.INFO
+				ll := log.DEBUG
 
-				if strings.HasPrefix(line, `[debug]`) {
-					ll = log.DEBUG
-					line = strings.TrimPrefix(line, `[debug] `)
-				} else if serr {
+				if serr || strings.HasPrefix(line, `[warn`) {
 					ll = log.WARNING
+				} else if strings.HasPrefix(line, `[err`) {
+					ll = log.ERROR
 				}
 
 				log.Logf(ll, "    | %v", line)
+
+				if strings.Contains(line, `Writing video subtitles to: `) {
+					stats.SubtitlesDownloaded += 1
+					stats.NewFilesDownloaded += 1
+				} else if strings.Contains(line, `Writing video description metadata as JSON to: `) {
+					stats.MetadataDownloaded += 1
+					stats.NewFilesDownloaded += 1
+				} else if strings.Contains(line, `Writing thumbnail to: `) {
+					stats.ThumbnailsDownloaded += 1
+					stats.NewFilesDownloaded += 1
+				} else if strings.HasPrefix(line, `[download] Destination: `) {
+					stats.VideosDownloaded += 1
+					stats.NewFilesDownloaded += 1
+				}
 			}
 
 			dl.OnStdout = outparse
