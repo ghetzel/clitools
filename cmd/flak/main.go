@@ -146,6 +146,10 @@ func main() {
 
 			wg.Wait()
 
+			sort.Slice(results, func(i int, j int) bool {
+				return results[i].Hostname < results[j].Hostname
+			})
+
 			for _, result := range results {
 				lvl := log.INFO
 
@@ -168,6 +172,7 @@ func main() {
 func parseHosts(c *cli.Context) ([]string, error) {
 	var data []byte
 	var hosts []string
+	var lines []string
 
 	if hostfile := c.String(`hosts`); hostfile != `` {
 		if d, err := fileutil.ReadAll(hostfile); err == nil {
@@ -185,10 +190,14 @@ func parseHosts(c *cli.Context) ([]string, error) {
 		return nil, fmt.Errorf("no hosts provided via flag or standard input")
 	}
 
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
+	if ifs := os.Getenv(`IFS`); ifs != `` {
+		lines = strings.Split(string(data), ifs)
+	} else {
+		lines = rxutil.Whitespace.Split(string(data), -1)
+	}
 
-		if line == `` {
+	for _, line := range lines {
+		if line := strings.TrimSpace(line); line == `` {
 			continue
 		} else if strings.HasPrefix(line, `#`) {
 			continue
