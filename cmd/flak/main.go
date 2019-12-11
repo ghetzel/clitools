@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -18,29 +20,33 @@ import (
 	"github.com/ghetzel/go-stockutil/rxutil"
 	"github.com/ghetzel/go-stockutil/sliceutil"
 	"github.com/ghetzel/go-stockutil/stringutil"
+	"github.com/jroimartin/gocui"
 )
 
-type sshResults struct {
-	Hostname    string    `json:"hostname"`
-	Error       error     `json:"error,omitempty"`
-	Status      int       `json:"status,omitempty"`
-	Stdout      []string  `json:"stdout,omitempty"`
-	Stderr      []string  `json:"stderr,omitempty"`
-	StartedAt   time.Time `json:"started_at,omitempty"`
-	CompletedAt time.Time `json:"completed_at,omitempty"`
+type hostOutput struct {
+	Hostname    string
+	Line        string
+	Level       log.Level
+	Stderr      bool
+	Error       error
+	ExitCode    int
+	StartedAt   time.Time
+	CompletedAt time.Time
 }
 
-func (self *sshResults) Duration() time.Duration {
+func (self *hostOutput) Duration() time.Duration {
 	return self.CompletedAt.Sub(self.StartedAt)
 }
 
-func (self *sshResults) String() string {
+func (self *hostOutput) String() string {
 	if self.Error != nil {
 		return self.Error.Error()
 	} else {
-		return fmt.Sprintf("exited status %d in %v", self.Status, self.Duration().Round(time.Millisecond))
+		return fmt.Sprintf("exited status %d in %v", self.ExitCode, self.Duration().Round(time.Millisecond))
 	}
 }
+
+const PerHostHistory int = 1024
 
 func main() {
 	app := cli.NewApp()
@@ -102,6 +108,11 @@ func main() {
 		}
 
 		if hosts, err := parseHosts(c); err == nil {
+			if len(hosts) == 0 {
+				log.Warningf("no hosts provided")
+				return
+			}
+
 			var wg sync.WaitGroup
 			var script string
 			var multiline bool
@@ -127,39 +138,103 @@ func main() {
 				return
 			}
 
-			sort.Strings(hosts)
-			hosts = sliceutil.UniqueStrings(hosts)
+			if gui, err := gocui.NewGui(gocui.OutputNormal); err == nil {
+				defer gui.Close()
 
-			resultchan := make(chan *sshResults, len(hosts))
-			results := make([]*sshResults, 0)
+				sort.Strings(hosts)
+				hosts = sliceutil.UniqueStrings(hosts)
+				// buffers := make(map[string]*LineBuffer)
+				buffers := make(map[string]*bytes.Buffer)
+				currentHost := hosts[0]
 
-			for _, host := range hosts {
-				wg.Add(1)
-				go sshexec(&wg, resultchan, c, host, nil, script, multiline)
-			}
+				gui.SetManagerFunc(func(g *gocui.Gui) error {
+					maxX, maxY := g.Size()
 
-			go func() {
-				for result := range resultchan {
-					results = append(results, result)
+					if side, err := g.SetView(`side`, -1, -1, int(0.2*float32(maxX)), maxY-5); err == nil {
+						for _, host := range hosts {
+							fmt.Fprintf(side, "%s\n", host)
+						}
+					} else if err != gocui.ErrUnknownView {
+						return err
+					}
+
+					if logs, err := g.SetView(`logs`, int(0.2*float32(maxX)), -1, maxX, maxY-5); err == nil {
+						outchan := make(chan *hostOutput, 0)
+
+						refreshCurrentHost := func() {
+							logs.Clear()
+
+							if buf, ok := buffers[currentHost]; ok {
+								io.Copy(logs, buf)
+								// if _, rows := logs.Size(); rows > 0 {
+								// 	lines := buf.Lines()
+
+								// 	// if rows < len(lines) {
+								// 	// 	lines = lines[len(lines)-rows:]
+								// 	// }
+
+								// 	for _, line := range lines {
+								// 		fmt.Fprintf(logs, "%s\n", line)
+								// 	}
+								// }
+							}
+						}
+
+						go func() {
+							for out := range outchan {
+								if buf, ok := buffers[out.Hostname]; ok && buf != nil {
+									if out.CompletedAt.IsZero() {
+										buf.WriteString(out.Line + "\n")
+
+										if out.Hostname == currentHost {
+											refreshCurrentHost()
+										}
+									} else {
+										buf.WriteString(fmt.Sprintf("COMPLETED: %v\n", out))
+									}
+								}
+							}
+						}()
+
+						for _, host := range hosts {
+							// buffers[host] = NewLineBuffer(PerHostHistory)
+							buffers[host] = bytes.NewBuffer(nil)
+							wg.Add(1)
+							go sshexec(&wg, outchan, c, host, nil, script, multiline)
+						}
+
+						refreshCurrentHost()
+						wg.Wait()
+					} else if err != gocui.ErrUnknownView {
+						return err
+					}
+
+					if cmdline, err := g.SetView(`cmdline`, -1, maxY-5, maxX, maxY); err == nil {
+						fmt.Fprintf(cmdline, "TEST")
+					} else if err != gocui.ErrUnknownView {
+						return err
+					}
+
+					return nil
+				})
+
+				if err := gui.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+					return gocui.ErrQuit
+				}); err != nil {
+					log.Fatalf("quit")
 				}
-			}()
 
-			wg.Wait()
-
-			sort.Slice(results, func(i int, j int) bool {
-				return results[i].Hostname < results[j].Hostname
-			})
-
-			for _, result := range results {
-				lvl := log.INFO
-
-				if result.Error != nil {
-					lvl = log.ERROR
-				} else if result.Status != 0 {
-					lvl = log.WARNING
+				switch err := gui.MainLoop(); err {
+				case nil:
+					fallthrough
+				case gocui.ErrQuit:
+					log.Noticef("Quitting....")
+					return
+				default:
+					log.Fatalf("mainloop: %v", err)
 				}
-
-				log.Logf(lvl, "[res|%s] %v", result.Hostname, result)
+			} else {
+				log.Fatalf("gui: %v", err)
 			}
 		} else {
 			log.Fatal(err)
@@ -211,18 +286,18 @@ func parseHosts(c *cli.Context) ([]string, error) {
 
 func sshexec(
 	wg *sync.WaitGroup,
-	reschan chan *sshResults,
+	outchan chan *hostOutput,
 	c *cli.Context,
 	hostname string,
 	env map[string]interface{},
 	script string,
 	multiline bool,
 ) {
-	results := new(sshResults)
+	final := new(hostOutput)
 
 	defer func() {
-		reschan <- results
 		wg.Done()
+		outchan <- final
 	}()
 
 	var sshTo *executil.Cmd
@@ -262,8 +337,8 @@ func sshexec(
 		}
 	}
 
-	results.StartedAt = time.Now()
-	results.Hostname = hostname
+	final.StartedAt = time.Now()
+	final.Hostname = hostname
 
 	if multiline {
 		if filename, err := fileutil.WriteTempFile(script, ``); err == nil {
@@ -273,20 +348,19 @@ func sshexec(
 				scpTo.SetEnv(k, v)
 			}
 
-			tag := fmt.Sprintf("scp|%s", hostname)
-			scpTo.OnStdout = cmdlog(tag, nil)
-			scpTo.OnStderr = cmdlog(tag, nil)
+			scpTo.OnStdout = cmdlog(hostname, nil)
+			scpTo.OnStderr = cmdlog(hostname, nil)
 
-			log.Debugf("[%s] exec: %s", tag, strings.Join(scpTo.Args, ` `))
+			log.Debugf("[%s] exec: %s", hostname, strings.Join(scpTo.Args, ` `))
 
 			if err := scpTo.Run(); err == nil {
 
 			} else {
-				results.Error = fmt.Errorf("script scp: %v", err)
+				final.Error = fmt.Errorf("script scp: %v", err)
 				return
 			}
 		} else {
-			results.Error = fmt.Errorf("failed to write script file: %v", err)
+			final.Error = fmt.Errorf("failed to write script file: %v", err)
 			return
 		}
 
@@ -299,21 +373,21 @@ func sshexec(
 		sshTo.SetEnv(k, v)
 	}
 
-	tag := fmt.Sprintf("scp|%s", hostname)
-	sshTo.OnStdout = cmdlog(tag, results)
-	sshTo.OnStderr = cmdlog(tag, results)
+	sshTo.OnStdout = cmdlog(hostname, outchan)
+	sshTo.OnStderr = cmdlog(hostname, outchan)
 
-	log.Debugf("[%s] exec: %s", tag, strings.Join(sshTo.Args, ` `))
+	log.Debugf("[%s] exec: %s", hostname, strings.Join(sshTo.Args, ` `))
 
-	results.Error = sshTo.Run()
+	final.Error = sshTo.Run()
+
 	status := sshTo.WaitStatus()
+	final.ExitCode = status.ExitCode
+	final.CompletedAt = time.Now()
 
-	results.Status = status.ExitCode
-	results.CompletedAt = time.Now()
 	return
 }
 
-func cmdlog(tag string, results *sshResults) executil.OutputLineFunc {
+func cmdlog(hostname string, outchan chan *hostOutput) executil.OutputLineFunc {
 	return func(line string, serr bool) {
 		lvl := log.INFO
 
@@ -327,13 +401,21 @@ func cmdlog(tag string, results *sshResults) executil.OutputLineFunc {
 			lvl = log.DEBUG
 		}
 
-		if results != nil {
+		if outchan != nil {
 			if serr {
-				results.Stderr = append(results.Stderr, line)
-				log.Logf(lvl, "[%s] %s", tag, line)
+				outchan <- &hostOutput{
+					Hostname: hostname,
+					Stderr:   true,
+					Line:     line,
+					Level:    lvl,
+				}
 			} else {
-				results.Stdout = append(results.Stderr, line)
-				fmt.Printf("%s|%s\n", tag, line)
+				outchan <- &hostOutput{
+					Hostname: hostname,
+					Stderr:   false,
+					Line:     line,
+					Level:    lvl,
+				}
 			}
 		}
 	}

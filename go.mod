@@ -8,6 +8,9 @@ require (
 	github.com/ghetzel/go-stockutil v1.8.9
 	github.com/ghodss/yaml v1.0.0
 	github.com/jdxcode/netrc v0.0.0-20190329161231-b36f1c51d91d
+	github.com/jroimartin/gocui v0.4.0
+	github.com/mattn/go-runewidth v0.0.7 // indirect
+	github.com/nsf/termbox-go v0.0.0-20190817171036-93860e161317 // indirect
 	github.com/stretchr/testify v1.4.0 // indirect
 	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
 )
