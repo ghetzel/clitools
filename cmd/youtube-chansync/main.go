@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/ghetzel/cli"
@@ -11,6 +12,7 @@ import (
 	"github.com/ghetzel/go-stockutil/executil"
 	"github.com/ghetzel/go-stockutil/fileutil"
 	"github.com/ghetzel/go-stockutil/log"
+	"github.com/ghetzel/go-stockutil/maputil"
 	"github.com/ghetzel/go-stockutil/stringutil"
 )
 
@@ -118,6 +120,34 @@ func main() {
 		}
 	}
 
+	app.Commands = []cli.Command{
+		{
+			Name:      `rename`,
+			Usage:     `Runs a rename pass on the given channel or all channels.`,
+			ArgsUsage: `[CHANNEL ..]`,
+			Action: func(c *cli.Context) {
+				chanGlob := `*`
+
+				if c.NArg() > 0 {
+					chanGlob = c.Args().First()
+				}
+
+				if ls, err := filepath.Glob(filepath.Join(
+					c.GlobalString(`channel-dir`),
+					chanGlob,
+				)); err == nil {
+					for _, dir := range ls {
+						if err := renameFilesIn(dir); err != nil {
+							log.Fatalf("path %s: %v", dir, err)
+						}
+					}
+				} else {
+					log.Fatal(err)
+				}
+			},
+		},
+	}
+
 	app.Run(os.Args)
 }
 
@@ -194,7 +224,7 @@ func syncChannel(c *cli.Context, ytdl string, chanpath string) (downloadStats, e
 				return stats, err
 			}
 
-			return stats, nil
+			return stats, renameFilesIn(chanpath)
 		} else {
 			return stats, err
 		}
@@ -236,3 +266,39 @@ func parseChannelInfo(name string, nfofile string) (*chaninfo, error) {
 		return nil, fmt.Errorf("Cannot sync channel %q: cannot read infofile: %v", name, err)
 	}
 }
+
+func renameFilesIn(chanpath string) error {
+	uniques := make(map[string]bool)
+
+	if entries, err := filepath.Glob(filepath.Join(chanpath, `*.*`)); err == nil {
+		for _, entry := range entries {
+			entry = filepath.Base(entry)
+
+			entry = strings.TrimSuffix(entry, `.info.json`)
+			entry = strings.TrimSuffix(entry, `.en.vtt`)
+			entry = strings.TrimSuffix(entry, `-thumb.jpg`)
+			entry = strings.TrimSuffix(entry, filepath.Ext(entry))
+
+			uniques[entry] = true
+		}
+
+		bases := maputil.StringKeys(uniques)
+		sort.Strings(bases)
+
+		for _, base := range bases {
+			infoJson := filepath.Join(chanpath, fmt.Sprintf("%s.info.json", base))
+
+			if fileutil.IsNonemptyFile(infoJson) {
+				log.Noticef("base: %s", base)
+			}
+		}
+
+		return nil
+	} else {
+		return err
+	}
+}
+
+// func renameFilesForItem(chanpath string, base string) error {
+
+// }

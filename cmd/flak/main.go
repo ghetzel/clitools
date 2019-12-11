@@ -233,10 +233,6 @@ func sshexec(
 	hostname, port := stringutil.SplitPair(hostname, `:`)
 	remoteFile := ``
 
-	if port == `` {
-		port = `22`
-	}
-
 	if multiline {
 		remoteFile = fmt.Sprintf("flak-%d-%d", time.Now().UnixNano(), rand.Intn(65536))
 
@@ -244,7 +240,10 @@ func sshexec(
 		script += fmt.Sprintf("\nret=$?; rm -f '%s'; exit $ret\n", remoteFile)
 	}
 
-	flags = append(flags, `-q`, `-o`, `Port=`+port)
+	if port != `` {
+		flags = append(flags, `-q`, `-o`, `Port=`+port)
+	}
+
 	flags = append(flags, `-q`, `-o`, `BatchMode=yes`)
 
 	if cf := c.String(`ssh-config-file`); cf != `` {
