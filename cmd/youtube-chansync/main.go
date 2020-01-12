@@ -324,20 +324,20 @@ func renameFilesIn(chanpath string) error {
 						newbase := fmt.Sprintf("%s-%s-%s - %s (%s)", yr, mn, dy, title, id)
 
 						if err := renameFilesForItem(chanpath, base, newbase); err != nil {
-							return err
+							log.Warningf("%s: %v", base, err)
 						}
 					} else {
 						log.Warningf("%s: invalid upload_date", base)
 					}
 				} else {
-					return err
+					log.Warningf("%s: invalid info.json: %v", base, err)
 				}
 
 				info.Close()
 			} else if os.IsNotExist(err) {
 				continue
 			} else {
-				return err
+				log.Warningf("%s: %v", base, err)
 			}
 		}
 
