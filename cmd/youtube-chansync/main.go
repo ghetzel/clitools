@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"github.com/ghetzel/go-stockutil/log"
 	"github.com/ghetzel/go-stockutil/maputil"
 	"github.com/ghetzel/go-stockutil/stringutil"
+	"github.com/ghetzel/go-stockutil/typeutil"
 )
 
 type downloadStats struct {
@@ -288,8 +290,38 @@ func renameFilesIn(chanpath string) error {
 		for _, base := range bases {
 			infoJson := filepath.Join(chanpath, fmt.Sprintf("%s.info.json", base))
 
-			if fileutil.IsNonemptyFile(infoJson) {
-				log.Noticef("base: %s", base)
+			if info, err := os.Open(infoJson); err == nil {
+				var meta ytdlInfo
+				defer info.Close()
+
+				if err := json.NewDecoder(info).Decode(&meta); err == nil {
+					if yr := meta.Field(`year`); yr != nil {
+						title := typeutil.String(meta.Field(`title`))
+
+						if len(title) < 3 {
+							title = `(unknown title)`
+						}
+
+						mn := meta.Field(`month`)
+						dy := meta.Field(`day`)
+						id := meta.Field(`id`)
+						newbase := fmt.Sprintf("%s-%s-%s - %s (%s)", yr, mn, dy, title, id)
+
+						if err := renameFilesForItem(chanpath, base, newbase); err != nil {
+							return err
+						}
+					} else {
+						log.Warningf("%s: invalid upload_date", base)
+					}
+				} else {
+					return err
+				}
+
+				info.Close()
+			} else if os.IsNotExist(err) {
+				continue
+			} else {
+				return err
 			}
 		}
 
@@ -299,6 +331,31 @@ func renameFilesIn(chanpath string) error {
 	}
 }
 
-// func renameFilesForItem(chanpath string, base string) error {
+func getVideoExtension(parent string, base string) string {
+	if entries, err := filepath.Glob(filepath.Join(parent, base+`.*`)); err == nil {
+		for _, entry := range entries {
+			mt, _ := stringutil.SplitPair(fileutil.GetMimeType(entry), `/`)
 
-// }
+			if mt == `video` {
+				return filepath.Ext(entry)
+			}
+		}
+	}
+
+	return ``
+}
+
+func renameFilesForItem(parent string, base string, newbase string) error {
+	if entries, err := filepath.Glob(filepath.Join(parent, base+`.*`)); err == nil {
+		for _, entry := range entries {
+			dir, file := filepath.Split(entry)
+			ext := strings.TrimPrefix(file, base)
+
+			if err := os.Rename(entry, filepath.Join(dir, newbase+ext)); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
