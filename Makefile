@@ -32,9 +32,7 @@ contrib/rclone-1.50.2.deb: contrib
 
 docker: contrib/rclone-1.50.2.deb
 	@echo "Building Docker image for v$(VERSION)"
-	@docker build --quiet . > .docker-build-id
-	@echo "Docker image ID: `cat .docker-build-id`"
-	docker tag `cat .docker-build-id` $(REGISTRY)ghetzel/clitools:$(VERSION)
+	@docker build -t $(REGISTRY)ghetzel/clitools:$(VERSION) .
 	docker tag $(REGISTRY)ghetzel/clitools:$(VERSION) $(REGISTRY)ghetzel/clitools:latest
 	docker push $(REGISTRY)ghetzel/clitools:$(VERSION)
 	docker push $(REGISTRY)ghetzel/clitools:latest
