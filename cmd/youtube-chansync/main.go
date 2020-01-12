@@ -18,6 +18,8 @@ import (
 	"github.com/ghetzel/go-stockutil/typeutil"
 )
 
+var dryRun bool
+
 type downloadStats struct {
 	NewFilesDownloaded   int
 	VideosDownloaded     int
@@ -72,6 +74,8 @@ func main() {
 
 	app.Before = func(c *cli.Context) error {
 		log.SetLevelString(c.String(`log-level`))
+		dryRun = c.Bool(`dry-run`)
+
 		return nil
 	}
 
@@ -182,7 +186,7 @@ func syncChannel(c *cli.Context, ytdl string, chanpath string) (downloadStats, e
 				`--download-archive`, c.String(`archive-file`),
 			}
 
-			if c.Bool(`dry-run`) {
+			if dryRun {
 				dlArgs = append(dlArgs, `--simulate`)
 			}
 
@@ -350,9 +354,17 @@ func renameFilesForItem(parent string, base string, newbase string) error {
 		for _, entry := range entries {
 			dir, file := filepath.Split(entry)
 			ext := strings.TrimPrefix(file, base)
+			to := filepath.Join(dir, newbase+ext)
 
-			if err := os.Rename(entry, filepath.Join(dir, newbase+ext)); err != nil {
-				return err
+			if entry != to {
+				if !dryRun {
+					if err := os.Rename(entry, to); err != nil {
+						return err
+					}
+				} else {
+					log.Noticef("dry-run: would mv %s/%s", filepath.Base(parent), file)
+					log.Noticef("               to %s/%s", filepath.Base(parent), newbase+ext)
+				}
 			}
 		}
 	}

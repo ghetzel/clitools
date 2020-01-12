@@ -7,7 +7,7 @@ COPY contrib/rclone-1.50.2.deb /tmp/rclone.deb
 RUN dpkg -i /tmp/rclone.deb
 RUN apt-get clean all
 RUN pip3 install --no-cache-dir -U youtube_dl
-
 COPY bin/ /usr/bin/
+
 WORKDIR /root
 CMD ["/bin/bash"]
