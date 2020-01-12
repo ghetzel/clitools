@@ -19,7 +19,7 @@ fmt:
 
 .PHONY: $(TOOLS)
 $(TOOLS):
-	go build -o $(@) $(subst bin,cmd,$(@))/*.go
+	go build -ldflags="-s -w" -o $(@) $(subst bin,cmd,$(@))/*.go
 
 build: $(TOOLS)
 	cp bin/* ~/lib/apps/clitools/linux/amd64/

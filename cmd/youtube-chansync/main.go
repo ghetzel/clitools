@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Wing924/shellwords"
 	"github.com/ghetzel/cli"
 	"github.com/ghetzel/clitools"
 	"github.com/ghetzel/go-stockutil/executil"
@@ -31,6 +32,7 @@ type downloadStats struct {
 type chaninfo struct {
 	Title string
 	URL   string
+	Args  []string
 }
 
 func main() {
@@ -100,21 +102,22 @@ func main() {
 				for _, dir := range ls {
 					name := filepath.Base(dir)
 
-					if stats, err := syncChannel(c, ytdl, dir); err == nil {
-						log.Debugf(
-							"* channel: %s new=%d videos=%d meta=%d thumbs=%d subs=%d",
-							name,
-							stats.NewFilesDownloaded,
-							stats.VideosDownloaded,
-							stats.MetadataDownloaded,
-							stats.ThumbnailsDownloaded,
-							stats.SubtitlesDownloaded,
-						)
+					stats, err := syncChannel(c, ytdl, dir)
+					log.Debugf(
+						"* channel: %s new=%d videos=%d meta=%d thumbs=%d subs=%d",
+						name,
+						stats.NewFilesDownloaded,
+						stats.VideosDownloaded,
+						stats.MetadataDownloaded,
+						stats.ThumbnailsDownloaded,
+						stats.SubtitlesDownloaded,
+					)
 
-						if stats.VideosDownloaded > 0 {
-							log.Noticef("[channel] %s: added %d", name, stats.VideosDownloaded)
-						}
-					} else {
+					if stats.VideosDownloaded > 0 {
+						log.Noticef("[channel] %s: added %d", name, stats.VideosDownloaded)
+					}
+
+					if err != nil {
 						log.Error(err)
 					}
 				}
@@ -190,6 +193,7 @@ func syncChannel(c *cli.Context, ytdl string, chanpath string) (downloadStats, e
 				dlArgs = append(dlArgs, `--simulate`)
 			}
 
+			dlArgs = append(dlArgs, nfo.Args...)
 			dlArgs = append(dlArgs, nfo.URL)
 
 			// download new videos, thumbnails, and metadata
@@ -224,13 +228,15 @@ func syncChannel(c *cli.Context, ytdl string, chanpath string) (downloadStats, e
 			dl.OnStdout = outparse
 			dl.OnStderr = outparse
 
+			defer renameFilesIn(chanpath)
+
 			if err := dl.Run(); err == nil {
 				log.Debugf("youtube-dl completed successfully")
 			} else {
 				return stats, err
 			}
 
-			return stats, renameFilesIn(chanpath)
+			return stats, nil
 		} else {
 			return stats, err
 		}
@@ -256,6 +262,12 @@ func parseChannelInfo(name string, nfofile string) (*chaninfo, error) {
 				nfo.Title = value
 			case `url`:
 				nfo.URL = value
+			case `chan_args`:
+				if words, err := shellwords.Split(value); err == nil {
+					nfo.Args = words
+				} else {
+					log.Warningf("%s: invalid CHAN_ARGS: %v", filepath.Base(nfofile), err)
+				}
 			}
 		}
 
