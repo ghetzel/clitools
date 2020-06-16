@@ -37,6 +37,8 @@ github.com/ghetzel/go-stockutil v1.8.57 h1:4M6YecDRIA4XmAN7DYToAXr97jRZT94eF5DHR
 github.com/ghetzel/go-stockutil v1.8.57/go.mod h1:Upalidr5qSOijbhYb6yED2X2rDoFFFVhl2z0H/hyCmw=
 github.com/ghetzel/go-stockutil v1.8.67 h1:pv5lpAIjjL3rF0F35xgwNMdIauZmo835mtr/ZbtqFKU=
 github.com/ghetzel/go-stockutil v1.8.67/go.mod h1:CODe2TOlt9Lp4lG/woz9jdnG+w++UDy0by3FhiOds+A=
+github.com/ghetzel/go-stockutil v1.8.71 h1:Vv8jHV7W8RPXVuAjp2eNahbs2PoGqY3iH5J6uu6+WDY=
+github.com/ghetzel/go-stockutil v1.8.71/go.mod h1:CODe2TOlt9Lp4lG/woz9jdnG+w++UDy0by3FhiOds+A=
 github.com/ghetzel/testify v1.4.1 h1:wpJirdM+znAnxWruGDBdIys5aU+wGJHNUTkgEo4PYwk=
 github.com/ghetzel/testify v1.4.1/go.mod h1:FwvFn1OiGEUgzhS3ySCjTBG7/sez0WRvOAxz5uQU8so=
 github.com/ghetzel/uuid v0.0.0-20171129191014-dec09d789f3d h1:YVJe7KwVYazt90hCc/q2dYJVS3062AY6QdT6iHd+Kh8=

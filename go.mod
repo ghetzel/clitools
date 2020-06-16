@@ -6,7 +6,7 @@ require (
 	github.com/Wing924/shellwords v1.0.0
 	github.com/emersion/go-imap v1.0.0-beta.4
 	github.com/ghetzel/cli v1.17.0
-	github.com/ghetzel/go-stockutil v1.8.67
+	github.com/ghetzel/go-stockutil v1.8.71
 	github.com/ghodss/yaml v1.0.0
 	github.com/jdxcode/netrc v0.0.0-20190329161231-b36f1c51d91d
 	github.com/shkh/lastfm-go v0.0.0-20191215035245-89a801c244e0
