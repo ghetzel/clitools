@@ -181,7 +181,22 @@ func sliceOfPairsToMap(pairs []string) map[string]interface{} {
 
 	for _, pair := range pairs {
 		k, v := stringutil.SplitPair(pair, `=`)
-		maputil.DeepSet(out, strings.Split(k, `.`), stringutil.Autotype(v))
+		k, typ := stringutil.SplitPair(k, `:`)
+		var vT interface{}
+		var converted bool
+
+		if tt := stringutil.ParseType(typ); tt != stringutil.Invalid {
+			if vv, err := stringutil.ConvertTo(tt, v); err == nil {
+				vT = vv
+				converted = true
+			}
+		}
+
+		if !converted {
+			vT = stringutil.Autotype(v)
+		}
+
+		maputil.DeepSet(out, strings.Split(k, `.`), vT)
 	}
 
 	return out
