@@ -6,6 +6,7 @@ GO111MODULE     ?= on
 LOCALS          := $(shell find . -type f -name '*.go' 2> /dev/null)
 REGISTRY        ?= registry.apps.gammazeta.net/
 VERSION          = $(shell grep -Po "\d+\.\d+\.\d+" version.go)
+CGO_ENABLED     ?= 0
 
 all: deps fmt build
 

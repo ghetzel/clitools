@@ -20,7 +20,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = `xq`
 	app.Usage = `Like jq, but for HTML/XML.`
-	app.ArgsUsage = `EXPRESSION`
+	app.ArgsUsage = `[CSS SELECTOR]`
 	app.Version = clitools.Version
 
 	app.Flags = []cli.Flag{
@@ -92,12 +92,12 @@ func htmldoc(docI interface{}) (*goquery.Document, error) {
 }
 
 func htmlNodeToMap(node *html.Node) map[string]interface{} {
-	output := make(map[string]interface{})
+	var output = make(map[string]interface{})
 
 	if node != nil && node.Type == html.ElementNode {
-		text := ``
-		children := make([]map[string]interface{}, 0)
-		attrs := make(map[string]interface{})
+		var text string
+		var children = make([]map[string]interface{}, 0)
+		var attrs = make(map[string]interface{})
 
 		for child := node.FirstChild; child != nil; child = child.NextSibling {
 			switch child.Type {
@@ -132,7 +132,11 @@ func htmlNodeToMap(node *html.Node) map[string]interface{} {
 
 		// only if the node has anything useful at all in it...
 		if len(output) > 0 {
-			output[`name`] = node.DataAtom.String()
+			if v := node.DataAtom.String(); v != `` {
+				output[`name`] = v
+			} else {
+				output[`name`] = node.Data
+			}
 		}
 	}
 
