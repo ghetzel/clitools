@@ -164,7 +164,7 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) {
-		if c.Bool(`sync`) {
+		if c.Bool(`sync`) || !fileutil.FileExists(nordqueryCacheLocation) {
 			log.FatalIf(syncNordList(c.String(`server-list-url`)))
 		}
 
