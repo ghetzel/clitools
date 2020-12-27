@@ -108,6 +108,7 @@ func main() {
 
 			if client, err := httputil.NewClient(baseurl); err == nil {
 				client.SetInsecureTLS(c.Bool(`insecure`))
+				client.SetAutomaticLogin(true)
 
 				for k, v := range addHeaders {
 					client.SetHeader(k, v)
