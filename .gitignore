@@ -2,3 +2,4 @@
 /tmp
 /contrib
 /.docker-build-id
+.DS_Store

@@ -7,6 +7,7 @@ LOCALS          := $(shell find . -type f -name '*.go' 2> /dev/null)
 REGISTRY        ?= registry.apps.gammazeta.net/
 VERSION          = $(shell grep -Po "\d+\.\d+\.\d+" version.go)
 CGO_ENABLED     ?= 0
+DESTDIR         ?= ~/lib/apps/clitools/$(shell go env GOOS)/$(shell go env GOARCH)/
 
 all: deps fmt build
 
@@ -23,7 +24,8 @@ $(TOOLS):
 	go build -ldflags="-s -w" -o $(@) $(subst bin,cmd,$(@))/*.go
 
 build: $(TOOLS)
-	cp bin/* ~/lib/apps/clitools/linux/amd64/
+	@test -d "$(DESTDIR)" || mkdir -p "$(DESTDIR)"
+	@cp -v bin/* "$(DESTDIR)/"
 
 contrib:
 	mkdir contrib
