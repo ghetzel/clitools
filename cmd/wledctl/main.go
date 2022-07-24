@@ -19,6 +19,7 @@ type wledStreamer struct {
 	proto   wledProtocol
 	w       io.Writer
 	timeout int
+	hdr     bool
 }
 
 func wled_newStreamer(proto wledProtocol, w io.Writer, timeout int) *wledStreamer {
@@ -30,6 +31,12 @@ func wled_newStreamer(proto wledProtocol, w io.Writer, timeout int) *wledStreame
 }
 
 func (self *wledStreamer) Write(b []byte) (int, error) {
+	if !self.hdr {
+		self.w.Write([]byte{byte(self.proto)})
+		self.w.Write([]byte{byte(self.timeout)})
+		self.hdr = true
+	}
+
 	return self.w.Write(b)
 }
 
@@ -159,6 +166,7 @@ func main() {
 		var num_leds = c.Int(`led-count`)
 		var timeout = c.Int(`timeout`)
 		var fx = c.String(`effect`)
+		var sleep = c.Duration(`interval`)
 
 		if conn, err := net.DialUDP(`udp`, nil, addr); err == nil {
 			if arg1 != `-` {
@@ -186,7 +194,7 @@ func main() {
 					for {
 						var r, g, b, _ uint8 = cc.RGBA255()
 						proto.WriteTo(conn, timeout, i, r, g, b)
-						time.Sleep(c.Duration(`interval`))
+						time.Sleep(sleep)
 
 						if i > 1 {
 							// oc = cc
@@ -198,9 +206,18 @@ func main() {
 					}
 				}
 			} else {
-				var stream = wled_newStreamer(proto, conn, timeout)
-				var _, err = io.Copy(stream, os.Stdin)
-				log.FatalIf(err)
+				var i int = 1
+
+				for {
+					var rgb = make([]byte, 3)
+
+					if n, err := os.Stdin.Read(rgb); err == nil && n == 3 {
+						proto.WriteBytes(conn, timeout, byte(i), rgb[0], rgb[1], rgb[2])
+						time.Sleep(sleep)
+					}
+
+					i = (i + 1) % num_leds
+				}
 			}
 		} else {
 			log.Fatalf("conn: %v", err)
