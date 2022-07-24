@@ -7,7 +7,7 @@ LOCALS          := $(shell find . -type f -name '*.go' 2> /dev/null)
 REGISTRY        ?= registry.apps.gammazeta.net/
 VERSION          = $(shell grep -Po "\d+\.\d+\.\d+" version.go)
 CGO_ENABLED     ?= 0
-DESTDIR         ?= ~/lib/apps/clitools/$(shell go env GOOS)/$(shell go env GOARCH)/
+DESTDIR         ?= $(HOME)/lib/apps/clitools/$(shell go env GOOS)/$(shell go env GOARCH)/
 
 all: deps fmt build
 
@@ -19,7 +19,6 @@ fmt:
 	gofmt -w $(LOCALS)
 	go vet ./...
 
-.PHONY: $(TOOLS)
 $(TOOLS):
 	go build -ldflags="-s -w" -o $(@) $(subst bin,cmd,$(@))/*.go
 
@@ -39,3 +38,5 @@ docker: contrib/rclone-1.50.2.deb
 	docker tag $(REGISTRY)ghetzel/clitools:$(VERSION) $(REGISTRY)ghetzel/clitools:latest
 	docker push $(REGISTRY)ghetzel/clitools:$(VERSION)
 	docker push $(REGISTRY)ghetzel/clitools:latest
+
+.PHONY: $(TOOLS)
