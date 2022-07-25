@@ -111,8 +111,8 @@ github.com/getkin/kin-openapi v0.76.0/go.mod h1:660oXbgy5JFMKreazJaQTw7o+X00qeSy
 github.com/ghetzel/cli v1.17.0 h1:gMbJBrjPMz7JRsYrcV7sK60HCqQxwI/xO8dEjP6Z1yk=
 github.com/ghetzel/cli v1.17.0/go.mod h1:Q+8sg5kp2RtKNJH7orf5ntfal6ol+XPGCYyRd5dEJm8=
 github.com/ghetzel/go-defaults v1.2.0/go.mod h1:xWhTgOoc4UNWT7sl3oyNFqtKzEbUKI9C3rqbwtwdxFw=
-github.com/ghetzel/go-stockutil v1.11.0 h1:fVDBH9EvYKNTXx1JrDOXsnUaEPkbxMglknzpfjQS5zc=
-github.com/ghetzel/go-stockutil v1.11.0/go.mod h1:xFqgbfU1FVbv7ppdKtnNw2HOistfiQaB6bZOv60BNSg=
+github.com/ghetzel/go-stockutil v1.11.3 h1:ZJc4IgCat/KW/YzYTX5WCw5hpW4E/3DnvrRWMnIFeGo=
+github.com/ghetzel/go-stockutil v1.11.3/go.mod h1:xFqgbfU1FVbv7ppdKtnNw2HOistfiQaB6bZOv60BNSg=
 github.com/ghetzel/testify v1.4.1 h1:wpJirdM+znAnxWruGDBdIys5aU+wGJHNUTkgEo4PYwk=
 github.com/ghetzel/testify v1.4.1/go.mod h1:FwvFn1OiGEUgzhS3ySCjTBG7/sez0WRvOAxz5uQU8so=
 github.com/ghetzel/uuid v0.0.0-20171129191014-dec09d789f3d h1:YVJe7KwVYazt90hCc/q2dYJVS3062AY6QdT6iHd+Kh8=

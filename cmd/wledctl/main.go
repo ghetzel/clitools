@@ -12,8 +12,23 @@ import (
 	"github.com/ghetzel/clitools"
 	"github.com/ghetzel/go-stockutil/colorutil"
 	"github.com/ghetzel/go-stockutil/log"
+	"github.com/ghetzel/go-stockutil/stringutil"
 	"github.com/ghetzel/go-stockutil/typeutil"
 )
+
+type wledLedSet map[int]colorutil.Color
+
+func (self wledLedSet) Has(i int) bool {
+	if len(self) == 0 {
+		return true
+	}
+
+	if _, ok := self[i]; ok {
+		return true
+	} else {
+		return false
+	}
+}
 
 type wledStreamer struct {
 	proto   wledProtocol
@@ -107,6 +122,41 @@ func parse_wledHost(addr string) *net.UDPAddr {
 	}
 }
 
+func parse_wledRange(rangespec string) (leds wledLedSet) {
+	leds = make(wledLedSet)
+	rangespec = strings.TrimSpace(rangespec)
+
+	for _, subrange := range strings.Split(rangespec, `,`) {
+		var index, colorspec = stringutil.SplitPairTrimSpace(subrange, `@`)
+		var color colorutil.Color
+
+		switch colorspec {
+		case ``:
+			continue
+		case `-`:
+			color = colorutil.MustParse(`rgba(0,0,0,1)`)
+		default:
+			color = colorutil.MustParse(colorspec)
+		}
+
+		if a, b := stringutil.SplitPairTrimSpace(index, `:`); a != `` {
+			var ai int = typeutil.NInt(a)
+
+			if b != `` {
+				var bi int = typeutil.NInt(b)
+
+				for i := ai; i < bi; i++ {
+					leds[i] = color
+				}
+			} else {
+				leds[ai] = color
+			}
+		}
+	}
+
+	return
+}
+
 func main() {
 	var app = cli.NewApp()
 	app.Name = `wledctl`
@@ -141,7 +191,7 @@ func main() {
 		cli.IntFlag{
 			Name:  `timeout, t`,
 			Usage: `How many seconds to wait before resuming normal light mode.`,
-			Value: 0,
+			Value: 255,
 		},
 		cli.DurationFlag{
 			Name:  `interval, i`,
@@ -152,6 +202,10 @@ func main() {
 			Name:  `effect, x`,
 			Usage: `The named of the pre-defined effect to trigger`,
 		},
+		cli.BoolFlag{
+			Name:  `clear-first, C`,
+			Usage: `Whether to clear all LEDs before changing state.`,
+		},
 	}
 
 	app.Before = func(c *cli.Context) error {
@@ -160,16 +214,31 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) {
-		var arg1 string = c.Args().First()
 		var proto wledProtocol = parse_wledProtocol(c.String(`protocol`))
 		var addr *net.UDPAddr = parse_wledHost(c.String(`address`))
 		var num_leds = c.Int(`led-count`)
 		var timeout = c.Int(`timeout`)
 		var fx = c.String(`effect`)
 		var sleep = c.Duration(`interval`)
+		var clearFirst = c.Bool(`clear-first`)
 
 		if conn, err := net.DialUDP(`udp`, nil, addr); err == nil {
-			if arg1 != `-` {
+			if arg1 := c.Args().First(); arg1 != `-` {
+				var ledset wledLedSet = parse_wledRange(strings.Join(c.Args(), `,`))
+
+				if clearFirst {
+					var payload = make([]byte, num_leds*4)
+
+					for i := 0; i < num_leds; i++ {
+						payload[0+(i*4)] = byte(i)
+						payload[1+(i*4)] = 0
+						payload[2+(i*4)] = 0
+						payload[3+(i*4)] = 0
+					}
+
+					proto.WriteBytes(conn, timeout, payload...)
+				}
+
 				switch fx {
 				case ``, `fill`:
 					var r, g, b, _ uint8 = colorutil.MustParse(
@@ -179,6 +248,12 @@ func main() {
 					var payload = make([]byte, num_leds*4)
 
 					for i := 0; i < num_leds; i++ {
+						if !ledset.Has(i) {
+							continue
+						} else if c := ledset[i]; !c.IsZero() {
+							r, g, b, _ = c.RGBA255()
+						}
+
 						payload[0+(i*4)] = byte(i)
 						payload[1+(i*4)] = r
 						payload[2+(i*4)] = g
@@ -187,11 +262,15 @@ func main() {
 
 					proto.WriteBytes(conn, timeout, payload...)
 				case `colortrain`:
-					var i int = 1
+					var i int = 0
 					// var oc colorutil.Color
 					var cc colorutil.Color = colorutil.MustParse(`#ff0000`)
 
 					for {
+						if !ledset.Has(i) {
+							continue
+						}
+
 						var r, g, b, _ uint8 = cc.RGBA255()
 						proto.WriteTo(conn, timeout, i, r, g, b)
 						time.Sleep(sleep)
