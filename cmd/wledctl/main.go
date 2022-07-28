@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"io"
+	"math"
 	"net"
 	"os"
 	"strings"
@@ -19,7 +20,7 @@ import (
 type wledLedSet map[int]colorutil.Color
 
 func (self wledLedSet) Has(i int) bool {
-	if len(self) == 0 {
+	if len(self) == 0 || i == math.MaxInt {
 		return true
 	}
 
@@ -27,6 +28,16 @@ func (self wledLedSet) Has(i int) bool {
 		return true
 	} else {
 		return false
+	}
+}
+
+func (self wledLedSet) Get(i int) (colorutil.Color, bool) {
+	if c, ok := self[i]; ok && !c.IsZero() {
+		return c, true
+	} else if c, ok := self[math.MaxInt]; ok && !c.IsZero() {
+		return c, true
+	} else {
+		return colorutil.MustParse(`black`), false
 	}
 }
 
@@ -127,8 +138,13 @@ func parse_wledRange(rangespec string) (leds wledLedSet) {
 	rangespec = strings.TrimSpace(rangespec)
 
 	for _, subrange := range strings.Split(rangespec, `,`) {
-		var index, colorspec = stringutil.SplitPairTrimSpace(subrange, `@`)
 		var color colorutil.Color
+		var index, colorspec = stringutil.SplitPairTrimSpace(subrange, `@`)
+
+		if colorspec == `` {
+			colorspec = subrange
+			index = `*`
+		}
 
 		switch colorspec {
 		case ``:
@@ -139,7 +155,10 @@ func parse_wledRange(rangespec string) (leds wledLedSet) {
 			color = colorutil.MustParse(colorspec)
 		}
 
-		if a, b := stringutil.SplitPairTrimSpace(index, `:`); a != `` {
+		if index == `*` {
+			leds[math.MaxInt] = color
+			return
+		} else if a, b := stringutil.SplitPairTrimSpace(index, `:`); a != `` {
 			var ai int = typeutil.NInt(a)
 
 			if b != `` {
@@ -248,10 +267,10 @@ func main() {
 					var payload = make([]byte, num_leds*4)
 
 					for i := 0; i < num_leds; i++ {
-						if !ledset.Has(i) {
-							continue
-						} else if c := ledset[i]; !c.IsZero() {
+						if c, ok := ledset.Get(i); ok {
 							r, g, b, _ = c.RGBA255()
+						} else {
+							continue
 						}
 
 						payload[0+(i*4)] = byte(i)
@@ -282,6 +301,33 @@ func main() {
 						}
 
 						i = (i + 1) % num_leds
+					}
+
+				case `sequence`:
+					for {
+						for _, phase := range c.Args() {
+							var ledset wledLedSet = parse_wledRange(phase)
+							var payload = make([]byte, num_leds*4)
+
+							for i := 0; i < num_leds; i++ {
+								var r, g, b, _ uint8
+								var c, ok = ledset.Get(i)
+
+								if ok {
+									r, g, b, _ = c.RGBA255()
+								} else {
+									continue
+								}
+
+								payload[0+(i*4)] = byte(i)
+								payload[1+(i*4)] = r
+								payload[2+(i*4)] = g
+								payload[3+(i*4)] = b
+							}
+
+							proto.WriteBytes(conn, timeout, payload...)
+							time.Sleep(sleep)
+						}
 					}
 				}
 			} else {
