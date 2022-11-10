@@ -10,6 +10,7 @@ import (
 	"github.com/ghetzel/cli"
 	"github.com/ghetzel/clitools"
 	"github.com/ghetzel/go-stockutil/log"
+	"github.com/ghetzel/go-stockutil/sliceutil"
 	"github.com/ghetzel/go-stockutil/typeutil"
 )
 
@@ -107,6 +108,17 @@ func main() {
 			EnvVar: `WLEDCTL_LED_COUNT`,
 		},
 		cli.StringFlag{
+			Name:   `scheme, s`,
+			Usage:  `Specify a name to save the given color scheme as, or if no other arguments are given, the scheme to apply.`,
+			EnvVar: `WLEDCTL_SCHEME`,
+		},
+		cli.StringFlag{
+			Name:   `config, c`,
+			Usage:  `The configuration file containing named effects.`,
+			EnvVar: `WLEDCTL_CONFIG_FILE`,
+			Value:  DefaultConfigName,
+		},
+		cli.StringFlag{
 			Name:   `protocol, p`,
 			Usage:  `Specify the WLED protocol to use: WARLS (1) DRGB (2) DRGBW (3) DNRBG (4) NOTIFIER (0)`,
 			Value:  `warls`,
@@ -152,6 +164,25 @@ func main() {
 		var sleep = c.Duration(`interval`)
 		var clearFirst = c.Bool(`clear-first`)
 		var effectTime = c.Duration(`transition-duration`)
+		var schemeName = c.String(`scheme`)
+		var configName = c.String(`config`)
+		var cfg *Config
+
+		if c, err := LoadConfig(configName); err == nil {
+			cfg = c
+		} else {
+			log.Fatalf("load config: %v", err)
+		}
+
+		if args := sliceutil.CompactString(c.Args()); schemeName != `` && len(args) > 0 {
+			cfg.Schemes[schemeName] = args
+		}
+
+		if err := SaveConfig(configName, cfg); err == nil {
+			log.Debugf("updated config: %v", configName)
+		} else {
+			log.Fatalf("save config: %v", err)
+		}
 
 		if conn, err := net.DialUDP(`udp`, nil, addr); err == nil {
 			var strip = NewDisplay(conn, num_leds)
@@ -177,7 +208,21 @@ func main() {
 			strip.ClearFirst = clearFirst
 			strip.TransitionShaderDuration = effectTime
 
-			log.FatalIf(strip.SetTransitionEffect(fx, c.Args()...))
+			var scheme []string = c.Args()
+
+			if sn := cfg.Scheme(schemeName); len(sn) > 0 {
+				scheme = sn
+			}
+
+			scheme = sliceutil.CompactString(scheme)
+
+			if len(scheme) == 0 {
+				scheme = []string{`black`}
+			}
+
+			log.DumpJSON(scheme)
+
+			log.FatalIf(strip.SetTransitionEffect(fx, scheme...))
 			log.FatalIf(strip.Flush())
 		} else {
 			log.Fatalf("conn: %v", err)
