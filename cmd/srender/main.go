@@ -2,13 +2,10 @@ package main
 
 import (
 	"os"
-	"strings"
 
 	"github.com/ghetzel/cli"
 	"github.com/ghetzel/clitools"
 	"github.com/ghetzel/go-stockutil/log"
-	"github.com/ghetzel/go-stockutil/maputil"
-	"github.com/ghetzel/go-stockutil/stringutil"
 )
 
 func main() {
@@ -36,15 +33,4 @@ func main() {
 	}
 
 	app.Run(os.Args)
-}
-
-func sliceOfPairsToMap(pairs []string) map[string]interface{} {
-	out := make(map[string]interface{})
-
-	for _, pair := range pairs {
-		k, v := stringutil.SplitPair(pair, `=`)
-		maputil.DeepSet(out, strings.Split(k, `.`), stringutil.Autotype(v))
-	}
-
-	return out
 }

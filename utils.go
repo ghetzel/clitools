@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	tabwriter "github.com/NonerKao/color-aware-tabwriter"
 	"github.com/ghetzel/cli"
+	"github.com/ghetzel/go-stockutil/maputil"
 	"github.com/ghetzel/go-stockutil/sliceutil"
+	"github.com/ghetzel/go-stockutil/stringutil"
 	"github.com/ghetzel/go-stockutil/typeutil"
 )
 
@@ -35,4 +38,45 @@ func Print(c *cli.Context, data interface{}, txtfn func()) {
 			}
 		}
 	}
+}
+
+// Split a slice of strings into a map.  Each element of the slice should take the general form:
+//
+//   [type:]key[.subkey[.subkey]]]=value
+//
+// The optional type prefix is parsed using stringutil.ParseType.
+func SliceOfKVPairsToMap(pairs []string, joiner string, nester string) map[string]interface{} {
+	var out = make(map[string]interface{})
+
+	if joiner == `` {
+		joiner = `=`
+	}
+
+	if nester == `` {
+		nester = `.`
+	}
+
+	for _, pair := range pairs {
+		var k, v = stringutil.SplitPair(pair, joiner)
+		var vT interface{}
+		var converted bool
+		var typ string
+
+		k, typ = stringutil.SplitPair(k, `:`)
+
+		if tt := stringutil.ParseType(typ); tt != stringutil.Invalid {
+			if vv, err := stringutil.ConvertTo(tt, v); err == nil {
+				vT = vv
+				converted = true
+			}
+		}
+
+		if !converted {
+			vT = stringutil.Autotype(v)
+		}
+
+		maputil.DeepSet(out, strings.Split(k, nester), vT)
+	}
+
+	return out
 }

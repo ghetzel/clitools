@@ -13,8 +13,6 @@ import (
 	"github.com/ghetzel/clitools"
 	"github.com/ghetzel/go-stockutil/httputil"
 	"github.com/ghetzel/go-stockutil/log"
-	"github.com/ghetzel/go-stockutil/maputil"
-	"github.com/ghetzel/go-stockutil/stringutil"
 )
 
 func main() {
@@ -80,7 +78,7 @@ func main() {
 		var out []byte
 		var err error
 
-		var data = sliceOfPairsToMap(c.Args())
+		var data = clitools.SliceOfKVPairsToMap(c.Args(), ``, ``)
 		var indent = c.Int(`indent`)
 		var baseurl = c.String(`url`)
 
@@ -144,8 +142,8 @@ func main() {
 				})
 
 				method := strings.ToUpper(c.String(`method`))
-				params := sliceOfPairsToMap(c.StringSlice(`param`))
-				headers := sliceOfPairsToMap(c.StringSlice(`header`))
+				params := clitools.SliceOfKVPairsToMap(c.StringSlice(`param`), ``, ``)
+				headers := clitools.SliceOfKVPairsToMap(c.StringSlice(`header`), ``, ``)
 
 				if c.IsSet(`username`) || c.IsSet(`password`) {
 					client.SetBasicAuth(c.String(`username`), c.String(`password`))
@@ -175,30 +173,4 @@ func main() {
 	}
 
 	app.Run(os.Args)
-}
-
-func sliceOfPairsToMap(pairs []string) map[string]interface{} {
-	out := make(map[string]interface{})
-
-	for _, pair := range pairs {
-		k, v := stringutil.SplitPair(pair, `=`)
-		k, typ := stringutil.SplitPair(k, `:`)
-		var vT interface{}
-		var converted bool
-
-		if tt := stringutil.ParseType(typ); tt != stringutil.Invalid {
-			if vv, err := stringutil.ConvertTo(tt, v); err == nil {
-				vT = vv
-				converted = true
-			}
-		}
-
-		if !converted {
-			vT = stringutil.Autotype(v)
-		}
-
-		maputil.DeepSet(out, strings.Split(k, `.`), vT)
-	}
-
-	return out
 }

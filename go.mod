@@ -10,14 +10,18 @@ require (
 	github.com/ghetzel/go-stockutil v1.11.3
 	github.com/ghodss/yaml v1.0.0
 	github.com/jdxcode/netrc v0.0.0-20210204082910-926c7f70242a
+	github.com/pquerna/otp v1.3.0
 	github.com/shkh/lastfm-go v0.0.0-20191215035245-89a801c244e0
-	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b
+	github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/Microsoft/hcsshim v0.9.4 // indirect
 	github.com/andybalholm/cascadia v1.0.0 // indirect
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/containerd/cgroups v1.0.3 // indirect
 	github.com/containerd/continuity v0.2.2 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
@@ -67,17 +71,17 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
 	google.golang.org/grpc v1.43.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/neurosnap/sentences.v1 v1.0.7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apimachinery v0.24.1 // indirect
-	k8s.io/client-go v11.0.0+incompatible // indirect
-	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
+	k8s.io/apimachinery v0.25.4 // indirect
+	k8s.io/client-go v0.25.4 // indirect
+	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 )
 
 go 1.17
