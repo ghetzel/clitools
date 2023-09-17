@@ -42,7 +42,7 @@ func Print(c *cli.Context, data interface{}, txtfn func()) {
 
 // Split a slice of strings into a map.  Each element of the slice should take the general form:
 //
-//   [type:]key[.subkey[.subkey]]]=value
+//	[type:]key[.subkey[.subkey]]]=value
 //
 // The optional type prefix is parsed using stringutil.ParseType.
 func SliceOfKVPairsToMap(pairs []string, joiner string, nester string) map[string]interface{} {

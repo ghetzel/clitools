@@ -107,6 +107,12 @@ func main() {
 			Value:  60,
 			EnvVar: `WLEDCTL_LED_COUNT`,
 		},
+		// cli.IntFlag{
+		// 	Name:   `brightness, b`,
+		// 	Usage:  `How bright the LEDs should be (0-255)`,
+		// 	Value:  128,
+		// 	EnvVar: `WLEDCTL_BRIGHTNESS`,
+		// },
 		cli.StringFlag{
 			Name:   `scheme, s`,
 			Usage:  `Specify a name to save the given color scheme as, or if no other arguments are given, the scheme to apply.`,

@@ -66,7 +66,17 @@ func (self *ShaderStep) Ranges() (ranges []LEDSet) {
 }
 
 func Fill(step *ShaderStep) (colorutil.Color, bool) {
-	return step.ToColor(), true
+	var col colorutil.Color = step.ToColor()
+
+	for _, colrng := range step.Ranges() {
+		if colrng.Has(step.Index) {
+			if px, ok := colrng.Get(step.Index); ok {
+				col = px
+			}
+		}
+	}
+
+	return col, true
 }
 
 func Fade(step *ShaderStep) (colorutil.Color, bool) {

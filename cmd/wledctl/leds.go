@@ -15,6 +15,7 @@ import (
 
 var DefaultTransitionShaderDuration = 3000 * time.Millisecond
 var DefaultColor = colorutil.MustParse(`#00000000`)
+var ColorBlack = colorutil.MustParse(`#000000FF`)
 
 type LEDSet map[int]colorutil.Color
 
@@ -121,6 +122,7 @@ type Display struct {
 	TransitionShaderDuration time.Duration
 	TransitionArgs           []string
 	DefaultColor             colorutil.Color
+	Brightness               uint8
 	ClearFirst               bool
 	ledcount                 int
 	wledDest                 io.Writer
@@ -137,6 +139,7 @@ func NewDisplay(w io.Writer, ledcount int) *Display {
 		TransitionShaderDuration: DefaultTransitionShaderDuration,
 		TransitionArgs:           make([]string, 0),
 		DefaultColor:             DefaultColor,
+		Brightness:               255,
 		ledcount:                 ledcount,
 		wledDest:                 w,
 		proto:                    wled_WARLS,
