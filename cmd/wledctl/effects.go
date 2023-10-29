@@ -60,7 +60,7 @@ func (self *ShaderStep) RangePair() (LEDSet, LEDSet, bool) {
 
 func (self *ShaderStep) Ranges() (ranges []LEDSet) {
 	for _, arg := range self.Args {
-		ranges = append(ranges, ParseLEDRange(arg))
+		ranges = append(ranges, ParseLEDRange(arg, len(self.Args)))
 	}
 	return
 }

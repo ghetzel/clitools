@@ -41,11 +41,12 @@ func (self LEDSet) Get(i int) (colorutil.Color, bool) {
 	}
 }
 
-func ParseLEDRange(rangespec string) (leds LEDSet) {
+func ParseLEDRange(rangespec string, frames int) (leds LEDSet) {
 	leds = make(LEDSet)
 	rangespec = strings.TrimSpace(rangespec)
+	var subranges = strings.Split(rangespec, `,`)
 
-	for _, subrange := range strings.Split(rangespec, `,`) {
+	for _, subrange := range subranges {
 		var color colorutil.Color
 		var idxspec, colorspec = stringutil.SplitPairTrimSpace(subrange, `@`)
 		var index, rpt = stringutil.SplitPairTrimSpace(idxspec, `/`)
@@ -73,6 +74,11 @@ func ParseLEDRange(rangespec string) (leds LEDSet) {
 			if b != `` {
 				var bi int = typeutil.NInt(b)
 				var step = typeutil.NInt(rpt)
+
+				switch rpt {
+				case `*`:
+					step = frames
+				}
 
 				if step == 0 {
 					step = 1
