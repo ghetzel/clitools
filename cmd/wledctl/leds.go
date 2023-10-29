@@ -47,7 +47,8 @@ func ParseLEDRange(rangespec string) (leds LEDSet) {
 
 	for _, subrange := range strings.Split(rangespec, `,`) {
 		var color colorutil.Color
-		var index, colorspec = stringutil.SplitPairTrimSpace(subrange, `@`)
+		var idxspec, colorspec = stringutil.SplitPairTrimSpace(subrange, `@`)
+		var index, rpt = stringutil.SplitPairTrimSpace(idxspec, `/`)
 
 		if colorspec == `` {
 			colorspec = subrange
@@ -71,8 +72,13 @@ func ParseLEDRange(rangespec string) (leds LEDSet) {
 
 			if b != `` {
 				var bi int = typeutil.NInt(b)
+				var step = typeutil.NInt(rpt)
 
-				for i := ai; i < bi; i++ {
+				if step == 0 {
+					step = 1
+				}
+
+				for i := ai; i < bi; i += step {
 					leds[i] = color
 				}
 			} else {

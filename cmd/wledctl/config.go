@@ -6,13 +6,15 @@ import (
 
 	"github.com/ghetzel/go-stockutil/executil"
 	"github.com/ghetzel/go-stockutil/fileutil"
+	"github.com/ghetzel/go-stockutil/log"
 	yaml "gopkg.in/yaml.v2"
 )
 
 var DefaultConfigName = executil.RootOrString(`/etc/wledctl.yaml`, `~/.config/wledctl/wledctl.yaml`)
 
 type Config struct {
-	Schemes map[string][]string `yaml:"schemes"`
+	Schemes map[string][]string   `yaml:"schemes"`
+	Loops   map[string]LoopConfig `yaml:"loops"`
 }
 
 func (self *Config) Scheme(name string) []string {
@@ -21,6 +23,16 @@ func (self *Config) Scheme(name string) []string {
 	} else {
 		return make([]string, 0)
 	}
+}
+
+func (self *Config) ApplyScheme(dpy *Display, schemes []string, effect string) {
+	for _, scheme := range schemes {
+		if specs := self.Scheme(scheme); len(specs) > 0 {
+			log.FatalIf(dpy.SetTransitionEffect(effect, specs...))
+		}
+	}
+
+	log.FatalIf(dpy.Flush())
 }
 
 func LoadConfig(path string) (*Config, error) {

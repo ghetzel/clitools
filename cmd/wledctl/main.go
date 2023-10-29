@@ -92,7 +92,7 @@ func main() {
 		cli.StringFlag{
 			Name:   `log-level, L`,
 			Usage:  `Level of log output verbosity`,
-			Value:  `debug`,
+			Value:  `info`,
 			EnvVar: `LOGLEVEL`,
 		},
 		cli.StringFlag{
@@ -170,7 +170,6 @@ func main() {
 		var sleep = c.Duration(`interval`)
 		var clearFirst = c.Bool(`clear-first`)
 		var effectTime = c.Duration(`transition-duration`)
-		var schemeName = c.String(`scheme`)
 		var configName = c.String(`config`)
 		var cfg *Config
 
@@ -180,15 +179,15 @@ func main() {
 			log.Fatalf("load config: %v", err)
 		}
 
-		if args := sliceutil.CompactString(c.Args()); schemeName != `` && len(args) > 0 {
-			cfg.Schemes[schemeName] = args
-		}
+		// if args := sliceutil.CompactString(c.Args()); schemeName != `` && len(args) > 0 {
+		// 	cfg.Schemes[schemeName] = args
+		// }
 
-		if err := SaveConfig(configName, cfg); err == nil {
-			log.Debugf("updated config: %v", configName)
-		} else {
-			log.Fatalf("save config: %v", err)
-		}
+		// if err := SaveConfig(configName, cfg); err == nil {
+		// 	log.Debugf("updated config: %v", configName)
+		// } else {
+		// 	log.Fatalf("save config: %v", err)
+		// }
 
 		if conn, err := net.DialUDP(`udp`, nil, addr); err == nil {
 			var strip = NewDisplay(conn, num_leds)
@@ -214,22 +213,47 @@ func main() {
 			strip.ClearFirst = clearFirst
 			strip.TransitionShaderDuration = effectTime
 
-			var scheme []string = c.Args()
+			var schemes []string = c.Args()
 
-			if sn := cfg.Scheme(schemeName); len(sn) > 0 {
-				scheme = sn
+			// if sn := cfg.Scheme(schemeName); len(sn) > 0 {
+			// 	schemes = sn
+			// }
+
+			schemes = sliceutil.CompactString(schemes)
+
+			if len(schemes) == 0 {
+				schemes = []string{`black`}
 			}
 
-			scheme = sliceutil.CompactString(scheme)
-
-			if len(scheme) == 0 {
-				scheme = []string{`black`}
+			for i := 0; i < len(schemes); i++ {
+				var scheme = schemes[i]
+				switch scheme[0] {
+				case '@':
+					if len(cfg.Loops) > 0 {
+						if loop := cfg.Loops[scheme[1:]]; len(loop) > 0 {
+						ForeverLoop:
+							for {
+								for _, step := range loop {
+									if schemes, dur, ctl, err := step.Parse(); err == nil {
+										switch ctl {
+										case ControlBreak:
+											break ForeverLoop
+										default:
+											cfg.ApplyScheme(strip, schemes, fx)
+											time.Sleep(dur)
+										}
+									} else {
+										log.Fatal(err)
+									}
+								}
+							}
+						}
+					}
+				default:
+					cfg.ApplyScheme(strip, schemes[i:], fx)
+				}
 			}
 
-			log.DumpJSON(scheme)
-
-			log.FatalIf(strip.SetTransitionEffect(fx, scheme...))
-			log.FatalIf(strip.Flush())
 		} else {
 			log.Fatalf("conn: %v", err)
 		}
