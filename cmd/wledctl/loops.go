@@ -12,6 +12,8 @@ type LoopControl int
 const (
 	ControlNothing LoopControl = iota
 	ControlBreak
+	ControlAdvance
+	ControlRetreat
 )
 
 type LoopStep string
@@ -23,7 +25,10 @@ func (self LoopStep) Parse() (schemes []string, dur time.Duration, ctl LoopContr
 	switch s {
 	case `break`:
 		ctl = ControlBreak
-		return
+	case `advance`:
+		ctl = ControlAdvance
+	case `retreat`:
+		ctl = ControlRetreat
 	default:
 		var schemeset, timespec = stringutil.SplitPairTrimSpace(s, `@`)
 

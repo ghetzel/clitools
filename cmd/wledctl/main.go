@@ -229,6 +229,8 @@ func main() {
 				var scheme = schemes[i]
 				switch scheme[0] {
 				case '@':
+					strip.OffsetCounter = 0
+
 					if len(cfg.Loops) > 0 {
 						if loop := cfg.Loops[scheme[1:]]; len(loop) > 0 {
 						ForeverLoop:
@@ -238,6 +240,10 @@ func main() {
 										switch ctl {
 										case ControlBreak:
 											break ForeverLoop
+										case ControlAdvance:
+											strip.OffsetCounter += 1
+										case ControlRetreat:
+											strip.OffsetCounter -= 1
 										default:
 											cfg.ApplyScheme(strip, schemes, fx)
 											time.Sleep(dur)

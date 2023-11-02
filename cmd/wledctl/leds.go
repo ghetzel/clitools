@@ -136,6 +136,7 @@ type Display struct {
 	DefaultColor             colorutil.Color
 	Brightness               uint8
 	ClearFirst               bool
+	OffsetCounter            int
 	ledcount                 int
 	wledDest                 io.Writer
 	proto                    Protocol
@@ -221,8 +222,9 @@ func (self *Display) Flush() error {
 			var continueAnimation bool
 
 			for i := 0; i < self.ledcount; i++ {
+				var oi int = (i + self.OffsetCounter) % len(self.FrontBuffer)
 				var bc = self.BackBuffer[i]
-				var fc = self.FrontBuffer[i]
+				var fc = self.FrontBuffer[oi]
 				var lc = bc
 				var tc = lc
 
@@ -243,7 +245,7 @@ func (self *Display) Flush() error {
 				self.BackBuffer[i] = tc
 			}
 
-			self.flushBuffer(transitionBuffer)
+			// self.flushBuffer(transitionBuffer)
 
 			if !continueAnimation {
 				break
@@ -261,7 +263,8 @@ func (self *Display) Flush() error {
 	}
 
 	for i := 0; i < len(self.FrontBuffer); i++ {
-		self.FrontBuffer[i] = self.BackBuffer[i]
+		var oi int = (i + self.OffsetCounter) % len(self.FrontBuffer)
+		self.FrontBuffer[oi] = self.BackBuffer[i]
 	}
 
 	return self.flushBuffer(self.FrontBuffer)
