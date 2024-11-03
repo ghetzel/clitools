@@ -98,7 +98,7 @@ func main() {
 		cli.StringFlag{
 			Name:   `address, a`,
 			Usage:  `The WLED IP[:PORT] to communicate with`,
-			Value:  `127.0.0.1:21324`,
+			Value:  DefaultAddress,
 			EnvVar: `WLEDCTL_HOST`,
 		},
 		cli.IntFlag{
@@ -163,7 +163,6 @@ func main() {
 
 	app.Action = func(c *cli.Context) {
 		// var proto Protocol = parse_wledProtocol(c.String(`protocol`))
-		var addr *net.UDPAddr = parse_wledHost(c.String(`address`))
 		var num_leds = c.Int(`led-count`)
 		var timeout = c.Int(`timeout`)
 		var fx = c.String(`effect`)
@@ -173,11 +172,19 @@ func main() {
 		var configName = c.String(`config`)
 		var cfg *Config
 
+		var addrstr = c.String(`address`)
+
 		if c, err := LoadConfig(configName); err == nil {
 			cfg = c
+
+			if cfg.Address != `` {
+				addrstr = cfg.Address
+			}
 		} else {
 			log.Fatalf("load config: %v", err)
 		}
+
+		var addr *net.UDPAddr = parse_wledHost(addrstr)
 
 		// if args := sliceutil.CompactString(c.Args()); schemeName != `` && len(args) > 0 {
 		// 	cfg.Schemes[schemeName] = args

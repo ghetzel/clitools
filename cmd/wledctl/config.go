@@ -10,9 +10,11 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+var DefaultAddress = `127.0.0.1:21324`
 var DefaultConfigName = executil.RootOrString(`/etc/wledctl.yaml`, `~/.config/wledctl/wledctl.yaml`)
 
 type Config struct {
+	Address string `yaml:"address,omitempty"`
 	Schemes map[string][]string   `yaml:"schemes"`
 	Loops   map[string]LoopConfig `yaml:"loops"`
 }
