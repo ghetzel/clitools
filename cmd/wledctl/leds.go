@@ -106,11 +106,11 @@ const (
 	wled_NOTIFY          = 0x0
 )
 
-func (self LEDSet) Bytes(proto Protocol, timeout uint8) []byte {
+func (self LEDSet) Bytes(proto Protocol, timeout uint8, skipZero bool) []byte {
 	var payload = make([]byte, len(self)*4)
 
 	for i := 0; i < len(self); i++ {
-		if c, ok := self[i]; ok {
+		if c, ok := self[i]; ok && (!skipZero || !c.IsZero()) {
 			var r, g, b, _ uint8 = c.RGBA255()
 			payload[0+(i*4)] = byte(i)
 			payload[1+(i*4)] = r
@@ -147,6 +147,7 @@ func NewDisplay(w io.Writer, ledcount int) *Display {
 		FrontBuffer:              make(LEDSet),
 		BackBuffer:               make(LEDSet),
 		FrameInterval:            16 * time.Millisecond,
+		ClearFirst:               true,
 		AutoclearTimeout:         255,
 		TransitionShader:         nil,
 		TransitionShaderDuration: DefaultTransitionShaderDuration,
@@ -190,6 +191,7 @@ func (self *Display) flushBuffer(buffer LEDSet) error {
 	var buf = buffer.Bytes(
 		self.proto,
 		self.AutoclearTimeout,
+		!self.ClearFirst,
 	)
 
 	// log.Debugf("flush: %x", buf)
@@ -241,8 +243,13 @@ func (self *Display) Flush() error {
 					Args:              self.TransitionArgs,
 				})
 
-				transitionBuffer[i] = tc
-				self.BackBuffer[i] = tc
+				if self.ClearFirst || !tc.Equals(`black`) {
+					transitionBuffer[i] = tc
+					self.BackBuffer[i] = tc
+				} else {
+					transitionBuffer[i] = colorutil.Color{}
+					self.BackBuffer[i] = colorutil.Color{}
+				}
 			}
 
 			// self.flushBuffer(transitionBuffer)

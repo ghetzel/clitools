@@ -144,7 +144,7 @@ func main() {
 			Name:  `effect, x`,
 			Usage: `The named of the pre-defined effect to trigger`,
 		},
-		cli.BoolFlag{
+		cli.BoolTFlag{
 			Name:  `clear-first, C`,
 			Usage: `Whether to clear all LEDs before changing state.`,
 		},

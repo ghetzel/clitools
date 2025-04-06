@@ -14,9 +14,10 @@ var DefaultAddress = `127.0.0.1:21324`
 var DefaultConfigName = executil.RootOrString(`/etc/wledctl.yaml`, `~/.config/wledctl/wledctl.yaml`)
 
 type Config struct {
-	Address string `yaml:"address,omitempty"`
+	Address string                `yaml:"address,omitempty"`
 	Schemes map[string][]string   `yaml:"schemes"`
 	Loops   map[string]LoopConfig `yaml:"loops"`
+	// Segments map[string][]string `yaml:"segments"`
 }
 
 func (self *Config) Scheme(name string) []string {
